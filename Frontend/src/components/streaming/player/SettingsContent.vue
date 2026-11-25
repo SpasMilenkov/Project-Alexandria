@@ -2,6 +2,7 @@
 import { storeToRefs } from "pinia";
 import { computed } from "vue";
 
+import { type VariantTrack } from "@/stores/player/transport";
 import { usePlayerStore } from "@/stores/stream-player";
 
 const store = usePlayerStore();
@@ -9,6 +10,12 @@ const { variantTracks, activeVariantId, abrEnabled, playbackRate, activeFile, af
   storeToRefs(store);
 
 const isAudioOnly = computed(() => activeFile.value?.mimeType.startsWith("audio/") ?? false);
+
+// A portrait 1080p lane is 1080 wide and 1920 tall; qualities are named by the short side.
+const shortSide = (t: VariantTrack) => {
+  if (t.width === null || t.height === null) return t.height ?? 0;
+  return Math.min(t.width, t.height);
+};
 
 const qualityOptions = computed(() => {
   if (!variantTracks.value.length) return [];
@@ -26,13 +33,13 @@ const qualityOptions = computed(() => {
       });
   }
 
-  const byHeight = new Map<number, (typeof variantTracks.value)[0]>();
+  const bySize = new Map<number, (typeof variantTracks.value)[0]>();
   for (const t of variantTracks.value) {
-    const h = t.height ?? 0;
-    const existing = byHeight.get(h);
-    if (!existing || t.bandwidth > existing.bandwidth) byHeight.set(h, t);
+    const size = shortSide(t);
+    const existing = bySize.get(size);
+    if (!existing || t.bandwidth > existing.bandwidth) bySize.set(size, t);
   }
-  return Array.from(byHeight.values()).sort((a, b) => (b.height ?? 0) - (a.height ?? 0));
+  return Array.from(bySize.values()).sort((a, b) => shortSide(b) - shortSide(a));
 });
 
 const activeTrack = computed(() => variantTracks.value.find((t) => t.active) ?? null);
@@ -41,7 +48,7 @@ const autoLabel = computed(() => {
   if (!activeTrack.value) return "Auto";
   return isAudioOnly.value
     ? `Auto · ${fmtBitrate(activeTrack.value.bandwidth)}`
-    : `Auto · ${activeTrack.value.height}p`;
+    : `Auto · ${shortSide(activeTrack.value)}p`;
 });
 
 const fmtBitrate = (bps: number) => {
@@ -50,7 +57,7 @@ const fmtBitrate = (bps: number) => {
 };
 
 const trackLabel = (t: (typeof variantTracks.value)[0]) =>
-  isAudioOnly.value ? fmtBitrate(t.bandwidth) : `${t.height}p`;
+  isAudioOnly.value ? fmtBitrate(t.bandwidth) : `${shortSide(t)}p`;
 
 const trackSublabel = (t: (typeof variantTracks.value)[0]) =>
   isAudioOnly.value ? (t.audioCodec ?? "") : fmtBitrate(t.bandwidth);

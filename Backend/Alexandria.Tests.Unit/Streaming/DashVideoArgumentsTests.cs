@@ -34,7 +34,7 @@ public class DashVideoArgumentsTests
         {
             var lane = Ladder[i];
 
-            ValueAfter(tokens, $"-filter:v:{i}").Should().Be($"scale={lane.Width}:{lane.Height}");
+            ValueAfter(tokens, $"-filter:v:{i}").Should().Be($"scale={lane.Width}:{lane.Height},setsar=1");
             ValueAfter(tokens, $"-c:v:{i}").Should().Be("libx264");
             ValueAfter(tokens, $"-preset:v:{i}").Should().Be("fast");
             ValueAfter(tokens, $"-crf:v:{i}").Should().Be(lane.Crf.ToString());
@@ -109,9 +109,9 @@ public class DashVideoArgumentsTests
         arguments.Should().Contain("-init_hw_device \"vaapi=va:/dev/dri/renderD128\" -filter_hw_device va");
         arguments.Should().Contain(
             "\"[0:V:0]format=nv12,hwupload,split=3[s0][s1][s2];" +
-            "[s0]scale_vaapi=w=640:h=360:extra_hw_frames=16[v0];" +
-            "[s1]scale_vaapi=w=1280:h=720:extra_hw_frames=16[v1];" +
-            "[s2]scale_vaapi=w=1920:h=1080:extra_hw_frames=16[v2]\"");
+            "[s0]scale_vaapi=w=640:h=360:extra_hw_frames=16,setsar=1[v0];" +
+            "[s1]scale_vaapi=w=1280:h=720:extra_hw_frames=16,setsar=1[v1];" +
+            "[s2]scale_vaapi=w=1920:h=1080:extra_hw_frames=16,setsar=1[v2]\"");
 
         tokens.Where((_, index) => index > 0 && tokens[index - 1] == "-map").Should()
             .Equal("[v0]", "[v1]", "[v2]", "0:a:0");
@@ -169,12 +169,5 @@ public class DashVideoArgumentsTests
 
         gpu[gpu.IndexOf("-force_key_frames", StringComparison.Ordinal)..].Should()
             .Be(cpu[cpu.IndexOf("-force_key_frames", StringComparison.Ordinal)..]);
-    }
-
-    [Fact]
-    public void AudioProbe_selectsOnlyTheFirstAudioStreamOfTheQuotedSource()
-    {
-        DashVideoArguments.AudioProbe("/in/my source").Should()
-            .Be("-v error -select_streams a:0 -show_entries stream=index -of csv=p=0 \"/in/my source\"");
     }
 }

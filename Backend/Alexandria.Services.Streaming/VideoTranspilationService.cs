@@ -15,18 +15,7 @@ public partial class VideoTranspilationService(
     IVideoEncoderSelector encoderSelector) : IVideoTranspilationService
 {
     // Reading stream headers is quick; a source that takes longer is not worth transcoding.
-    private static readonly TimeSpan AudioProbeTimeout = TimeSpan.FromMinutes(1);
-
-    private static readonly IReadOnlyDictionary<VideoRung, VideoQualityLane> RungMap =
-        new Dictionary<VideoRung, VideoQualityLane>
-        {
-            [VideoRung.P360] = new(640, 360, 800, 28),
-            [VideoRung.P480] = new(854, 480, 1500, 26),
-            [VideoRung.P720] = new(1280, 720, 2500, 23),
-            [VideoRung.P1080] = new(1920, 1080, 5000, 21),
-            [VideoRung.P1440] = new(2560, 1440, 8000, 19),
-            [VideoRung.P2160] = new(3840, 2160, 16000, 17),
-        };
+    private static readonly TimeSpan SourceProbeTimeout = TimeSpan.FromMinutes(1);
 
     /// <inheritdoc/>
     public async Task<TranspilationOutput> TranspileAsync(
@@ -36,17 +25,18 @@ public partial class VideoTranspilationService(
         VideoRung[] videoRungs,
         CancellationToken ct = default)
     {
-        var lanes = videoRungs
-            .OrderBy(r => r)
-            .Select(r => RungMap[r])
-            .ToList();
+        LogTranspilationStarting(logger, inputPath, outputDirectory);
+
+        var source = await ProbeSourceAsync(inputPath, ct);
+        var lanes = VideoLadder.Fit(source, videoRungs);
+
+        LogLanesFitted(logger, inputPath, $"{source.Width}x{source.Height}",
+            string.Join(", ", lanes.Select(lane => $"{lane.Width}x{lane.Height}")));
 
         var dashDir = Path.Combine(outputDirectory, "dash");
         Directory.CreateDirectory(dashDir);
 
-        LogTranspilationStarting(logger, inputPath, outputDirectory);
-
-        await RunDashPassAsync(jobId, inputPath, dashDir, lanes, ct);
+        await RunDashPassAsync(jobId, inputPath, dashDir, lanes, source.HasAudio, ct);
 
         LogTranspilationCompleted(logger, inputPath);
 
@@ -66,10 +56,10 @@ public partial class VideoTranspilationService(
         string inputPath,
         string dashDir,
         IReadOnlyList<VideoQualityLane> lanes,
+        bool hasAudio,
         CancellationToken ct)
     {
         var manifestPath = Path.Combine(dashDir, "manifest.mpd");
-        var hasAudio = await HasAudioAsync(inputPath, ct);
         var encoder = await encoderSelector.SelectAsync(ct);
 
         await VideoEncodeFallback.RunAsync(
@@ -132,19 +122,20 @@ public partial class VideoTranspilationService(
         stderr?.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault()
         ?? "no output";
 
-    private async Task<bool> HasAudioAsync(string inputPath, CancellationToken ct)
+    private async Task<VideoSource> ProbeSourceAsync(string inputPath, CancellationToken ct)
     {
         var result = await ExternalProcess.RunAsync(
-            "ffprobe", DashVideoArguments.AudioProbe(inputPath), AudioProbeTimeout, logger, ct);
+            "ffprobe", VideoSourceProbe.Arguments(inputPath), SourceProbeTimeout, logger, ct);
 
         if (result.ExitCode != 0)
             throw new TranspilationFfprobeException(inputPath, result.ExitCode, result.StdErrTail);
 
-        var hasAudio = !string.IsNullOrWhiteSpace(result.StdOut);
+        var source = VideoSourceProbe.Parse(result.StdOut)
+            ?? throw new TranspilationFfprobeException(inputPath, $"'{inputPath}' has no video stream to transcode.");
 
-        if (!hasAudio)
+        if (!source.HasAudio)
             LogSourceWithoutAudio(logger, inputPath);
 
-        return hasAudio;
+        return source;
     }
 }

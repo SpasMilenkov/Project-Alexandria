@@ -269,7 +269,7 @@ public class TranscodeProcessTests
         {
             var input = Path.Combine(directory, "source.mp4");
             await GenerateAsync(
-                "-f lavfi -i testsrc2=size=320x180:rate=10:duration=2 -f lavfi -i sine=duration=2 " +
+                "-f lavfi -i testsrc2=size=640x360:rate=10:duration=2 -f lavfi -i sine=duration=2 " +
                 $"-c:v libx264 -preset ultrafast -threads 1 -c:a aac \"{input}\"", ct);
 
             var sut = VideoService(new VideoEncoderSelection("/dev/null"));
@@ -355,6 +355,42 @@ public class TranscodeProcessTests
 
             var manifest = await File.ReadAllTextAsync(Path.Combine(output.DashDirectory, "manifest.mpd"), ct);
             manifest.Should().Contain("contentType=\"video\"").And.NotContain("contentType=\"audio\"");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    // Phones store portrait clips sideways with a rotation tag. The lanes must come out upright
+    // at the clip's shape, and the 1080p rung, which would only upscale, gives way to a lane at
+    // the clip's own size.
+    [Fact]
+    public async Task VideoTranspileAsync_rotatedPortraitSource_keepsItsShapeAndNeverUpscales()
+    {
+        Assert.SkipUnless(OnPath("ffmpeg") && OnPath("ffprobe"), "ffmpeg and ffprobe are not installed.");
+        StatusIs(JobStatus.Processing);
+        var ct = TestContext.Current.CancellationToken;
+        var directory = Directory.CreateTempSubdirectory("transcode-process-test-").FullName;
+
+        try
+        {
+            var stored = Path.Combine(directory, "stored.mp4");
+            var input = Path.Combine(directory, "source.mp4");
+            await GenerateAsync(
+                $"-f lavfi -i testsrc2=size=1280x720:rate=10:duration=2 -c:v libx264 -preset ultrafast -threads 1 \"{stored}\"", ct);
+            await GenerateAsync($"-display_rotation:v:0 90 -i \"{stored}\" -c copy \"{input}\"", ct);
+
+            var sut = VideoService(VideoEncoderSelection.Cpu);
+
+            var output = await sut.TranspileAsync(_jobId, input, Path.Combine(directory, "out"),
+                [VideoRung.P360, VideoRung.P1080], ct);
+
+            output.Lanes.Select(lane => (lane.Width, lane.Height, lane.BitrateKbps)).Should()
+                .Equal((360, 640, 800), (720, 1280, 2500));
+
+            var manifest = await File.ReadAllTextAsync(Path.Combine(output.DashDirectory, "manifest.mpd"), ct);
+            manifest.Should().Contain("width=\"360\" height=\"640\"").And.Contain("width=\"720\" height=\"1280\"");
         }
         finally
         {

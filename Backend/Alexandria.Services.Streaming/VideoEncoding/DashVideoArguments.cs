@@ -21,6 +21,10 @@ internal static class DashVideoArguments
     // memory". 8 extra frames still failed on a three-lane ladder, 16 passed with all six lanes.
     private const int ExtraGpuFrames = 16;
 
+    // Lanes are sized from the source as shown, so their pixels are square. Saying so outright
+    // keeps both scalers from deriving an odd pixel shape from the even-number rounding of a lane.
+    private const string SquarePixels = "setsar=1";
+
     public static string ForCpu(
         string inputPath,
         string manifestPath,
@@ -39,7 +43,7 @@ internal static class DashVideoArguments
 
             args.AddRange([
                 "-map", "0:V:0",
-                $"-filter:v:{i}", $"scale={lane.Width}:{lane.Height}",
+                $"-filter:v:{i}", $"scale={lane.Width}:{lane.Height},{SquarePixels}",
                 $"-c:v:{i}", "libx264",
                 $"-preset:v:{i}", "fast",
                 $"-crf:v:{i}", Number(lane.Crf),
@@ -117,18 +121,12 @@ internal static class DashVideoArguments
         return string.Join(" ", args);
     }
 
-    /// <summary>
-    /// ffprobe arguments that print the index of the source's first audio stream, and nothing
-    /// when it has none.
-    /// </summary>
-    public static string AudioProbe(string inputPath) =>
-        $"-v error -select_streams a:0 -show_entries stream=index -of csv=p=0 {Quote(inputPath)}";
-
     private static string GpuFilterGraph(IReadOnlyList<VideoQualityLane> lanes)
     {
         var splits = string.Concat(Enumerable.Range(0, lanes.Count).Select(i => $"[s{i}]"));
         var scales = lanes.Select((lane, i) =>
-            $"[s{i}]scale_vaapi=w={Number(lane.Width)}:h={Number(lane.Height)}:extra_hw_frames={Number(ExtraGpuFrames)}[v{i}]");
+            $"[s{i}]scale_vaapi=w={Number(lane.Width)}:h={Number(lane.Height)}:extra_hw_frames={Number(ExtraGpuFrames)}," +
+            $"{SquarePixels}[v{i}]");
 
         return $"[0:V:0]format=nv12,hwupload,split={Number(lanes.Count)}{splits};{string.Join(";", scales)}";
     }

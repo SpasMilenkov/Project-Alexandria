@@ -15,6 +15,11 @@ public partial class VideoTranspilationService
     private static partial void LogTranspilationCompleted(
         ILogger logger, string inputPath);
 
+    [LoggerMessage(8009, LogLevel.Information,
+        "Source '{InputPath}' shows at {SourceSize}; encoding lanes {Lanes}")]
+    private static partial void LogLanesFitted(
+        ILogger logger, string inputPath, string sourceSize, string lanes);
+
     [LoggerMessage(8004, LogLevel.Information,
         "Starting video DASH pass for '{InputPath}' with {Attempt}")]
     private static partial void LogDashPassStarting(
