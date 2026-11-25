@@ -101,7 +101,9 @@ public static class SystemCheckScreen
         if (!checker.IsDockerInstalled())
         {
             return Fail(DockerRow, "not found", "Docker is not installed or cannot run",
-                FailureDetails(checker, "The Docker command must be available in your terminal before continuing."));
+                FailureDetails(checker, "Install Docker Engine and the Docker Compose plugin " +
+                                        "(https://docs.docker.com/engine/install/), start the Docker service, " +
+                                        "and make sure your account can use it."));
         }
 
         Pass(DockerRow, ShortVersion(checker.GetDockerVersion()));

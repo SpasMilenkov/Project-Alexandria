@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using Builder.Catalog;
 using Builder.Common;
 using Builder.Credentials;
+using Builder.SystemCheck;
 
 namespace Builder.Configuration;
 
@@ -175,6 +176,7 @@ public static class EnvGenerator
         AppendSection(builder, "CORS", values, written, "CORS_");
         AppendSection(builder, "Frontend and feature switches", values, written, "PBKDF2_", "STREAMING_", "LYRICS_", "AUTOTAGGING_");
         AppendSection(builder, "Monitoring", values, written, "GRAFANA_", "POSTGRES_EXPORTER_");
+        AppendSection(builder, "Resource limits (recomputed for this machine on every setup run)", values, written, ResourceBudget.EnvironmentPrefix);
         AppendSection(builder, "Additional settings", values, written, string.Empty);
 
         return builder.ToString();

@@ -46,8 +46,10 @@ public static class VipsRuntime
             Cache.MaxFiles = 0;
             Cache.MaxMem = 0;
 
-            if (config.Concurrency > 0)
-                NetVips.NetVips.Concurrency = config.Concurrency;
+            // libvips counts the host's cores and ignores the container's CPU quota; .NET's count follows it.
+            NetVips.NetVips.Concurrency = config.Concurrency > 0
+                ? config.Concurrency
+                : Math.Max(1, Environment.ProcessorCount);
 
             _configured = true;
         }

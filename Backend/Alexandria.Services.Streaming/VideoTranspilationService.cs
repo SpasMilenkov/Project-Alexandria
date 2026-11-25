@@ -1,4 +1,5 @@
 using Alexandria.Common;
+using Alexandria.Common.Processes;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files.Streaming;
@@ -65,7 +66,7 @@ public partial class VideoTranspilationService(
     {
         var manifestPath = Path.Combine(dashDir, "manifest.mpd");
 
-        var args = new List<string> { "-i", $"\"{inputPath}\"" };
+        var args = new List<string> { FfmpegThreads.Input, "-i", $"\"{inputPath}\"" };
 
         for (var i = 0; i < lanes.Count; i++)
         {
@@ -87,6 +88,7 @@ public partial class VideoTranspilationService(
             "-f", "dash",
             "-seg_duration", "6",
             "-adaptation_sets", "\"id=0,streams=v id=1,streams=a\"",
+            FfmpegThreads.Output,
             $"\"{manifestPath}\""
         ]);
 

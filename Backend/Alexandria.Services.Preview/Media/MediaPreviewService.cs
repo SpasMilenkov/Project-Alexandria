@@ -185,9 +185,9 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
 
         var result = await ExternalProcess.RunAsync(
             "ffmpeg",
-            $"-ss {timeSeconds} -i \"{inputPath}\" -vframes 1 " +
+            $"{FfmpegThreads.Input} -ss {timeSeconds} -i \"{inputPath}\" -vframes 1 " +
             $"-vf \"scale='min(1920,iw)':'min(1080,ih)':force_original_aspect_ratio=decrease\" " +
-            $"-q:v 2 \"{outputPath}\"",
+            $"-q:v 2 {FfmpegThreads.Output} \"{outputPath}\"",
             ThumbnailTimeout,
             logger,
             ct);
@@ -210,7 +210,7 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
         {
             await ExternalProcess.RunAsync(
                 "ffmpeg",
-                $"-i \"{inputPath}\" -an -vcodec mjpeg \"{outputPath}\"",
+                $"{FfmpegThreads.Input} -i \"{inputPath}\" -an -vcodec mjpeg {FfmpegThreads.Output} \"{outputPath}\"",
                 ArtworkTimeout,
                 logger,
                 ct);
@@ -259,9 +259,9 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
 
         var result = await ExternalProcess.RunAsync(
             "ffmpeg",
-            $"-i \"{inputPath}\" " +
+            $"{FfmpegThreads.Input} -i \"{inputPath}\" " +
             $"-filter_complex \"[0:a]showwavespic=s=1920x1080:colors=0x3b82f6\" " +
-            $"-frames:v 1 \"{outputPath}\"",
+            $"-frames:v 1 {FfmpegThreads.Output} \"{outputPath}\"",
             WaveformTimeout,
             logger,
             ct);
@@ -285,9 +285,9 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
 
         var result = await ExternalProcess.RunAsync(
             "ffmpeg",
-            $"-i \"{inputPath}\" -t {durationSeconds} " +
+            $"{FfmpegThreads.Input} -i \"{inputPath}\" -t {durationSeconds} " +
             $"-c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k " +
-            $"-movflags +faststart \"{outputPath}\"",
+            $"-movflags +faststart {FfmpegThreads.Output} \"{outputPath}\"",
             VideoClipTimeout,
             logger,
             ct);
@@ -314,7 +314,8 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
 
         var result = await ExternalProcess.RunAsync(
             "ffmpeg",
-            $"-i \"{inputPath}\" -t {durationSeconds} -vn -c:a libmp3lame -b:a 128k \"{outputPath}\"",
+            $"{FfmpegThreads.Input} -i \"{inputPath}\" -t {durationSeconds} -vn -c:a libmp3lame -b:a 128k " +
+            $"{FfmpegThreads.Output} \"{outputPath}\"",
             AudioClipTimeout,
             logger,
             ct);

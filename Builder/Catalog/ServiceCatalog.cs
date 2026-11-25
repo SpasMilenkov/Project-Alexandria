@@ -9,6 +9,14 @@ public sealed class ServiceInfo
     public required string ComposeTemplate { get; init; }
     public required long MemoryMb { get; init; }
     public long MemoryHeadroomMb { get; init; }
+
+    // Lowest cap the budget may shrink this service to on a small machine; zero keeps MemoryMb fixed.
+    public long MinimumMemoryMb { get; init; }
+
+    public double Cpus { get; init; } = 1;
+
+    // Long CPU-bound jobs; together they must leave the cores reserved for the host free.
+    public bool HeavyCpu { get; init; }
     public IReadOnlyList<string> RequiresFeatures { get; init; } = [];
     public IReadOnlyList<string> RequiresAllFeatures { get; init; } = [];
     public bool AlwaysEnabled { get; init; }
@@ -52,13 +60,17 @@ public static class ServiceCatalog
         string[]? features = null, string[]? sourceFiles = null, string[]? volumes = null,
         string[]? networks = null, string[]? extraTemplates = null, bool infrastructure = false,
         bool oneShot = false, long headroomMb = 0, ModelAssetRequirement[]? modelAssets = null,
-        string[]? allFeatures = null, bool alwaysEnabled = false) => new()
+        string[]? allFeatures = null, bool alwaysEnabled = false, double cpus = 1,
+        long minimumMemoryMb = 0, bool heavyCpu = false) => new()
     {
         Id = id,
         Name = name,
         Group = group,
         MemoryMb = memoryMb,
         MemoryHeadroomMb = headroomMb,
+        MinimumMemoryMb = minimumMemoryMb,
+        Cpus = cpus,
+        HeavyCpu = heavyCpu,
         ComposeTemplate = template,
         Description = description,
         RequiresFeatures = features ?? [],
@@ -78,7 +90,7 @@ public static class ServiceCatalog
         S("postgres", "Database", "Core", 512, StorageTemplate,
             "Stores all your account info, tags and file details.",
             sourceFiles: ["scripts/postgres/init/01-create-exporter-user.sh"],
-            volumes: ["postgres_local_data"], networks: ["data-net"], infrastructure: true),
+            volumes: ["postgres_local_data"], networks: ["data-net"], infrastructure: true, cpus: 2),
         S("garage", "File storage", "Core", 256, StorageTemplate,
             "Keeps the actual files safe on disk, with version history.",
             volumes: ["garage_local_meta_data", "garage_local_storage_data"], networks: ["app-net", "data-net"],
@@ -99,11 +111,12 @@ public static class ServiceCatalog
             "The heart of the app - serves pages, uploads, accounts and search.",
             sourceFiles: ["Backend/Alexandria.Api/Dockerfile", "Backend/Alexandria.Api/Alexandria.Api.csproj",
                 "Backend/Directory.Packages.props", "Backend/Directory.Build.props", "Backend/nuget.config"],
-            networks: ["app-net", "data-net"], headroomMb: 576),
+            networks: ["app-net", "data-net"], headroomMb: 576, cpus: 2),
         S("frontend", "Web interface", "Core", 128, AppsTemplate,
             "What you see and click in the browser.",
             sourceFiles: ["Frontend/Dockerfile", "Frontend/package.json", "Frontend/pnpm-lock.yaml",
-                "Frontend/pnpm-workspace.yaml", "Frontend/src/main.ts", "Frontend/nginx.conf"], networks: ["app-net"]),
+                "Frontend/pnpm-workspace.yaml", "Frontend/src/main.ts", "Frontend/nginx.conf"], networks: ["app-net"],
+            cpus: 0.5),
         S("nginx", "Front door", "Core", 64, AppsTemplate,
             "One web address for everything; routes traffic and keeps it secure.",
             sourceFiles: ["nginx/Dockerfile", "nginx/nginx.conf", "nginx/502.html", "nginx/gpg/pluknet.key"], networks: ["frontend-net", "app-net"]),
@@ -111,38 +124,38 @@ public static class ServiceCatalog
         S("document-worker", "Document previews", "Document previews", 1024,
             "docker-compose/document-worker.yml.template", "Generates preview images for documents like PDFs.",
             features: [FeatureCatalog.DocumentPreviews.Id], sourceFiles: ["Backend/Alexandria.Workers.Document/Dockerfile"],
-            volumes: ["document_worker_scratch"], networks: ["data-net"]),
+            volumes: ["document_worker_scratch"], networks: ["data-net"], cpus: 2, minimumMemoryMb: 256),
         S("media-worker", "Media metadata and previews", "Media metadata and previews", 1024,
             "docker-compose/media-worker.yml.template", "Reads media details; creates thumbnails and clips when previews are enabled.",
             features: [FeatureCatalog.MediaProcessing.Id], sourceFiles: ["Backend/Alexandria.Workers.Media/Dockerfile"],
-            volumes: ["media_worker_scratch"], networks: ["data-net"], alwaysEnabled: true),
+            volumes: ["media_worker_scratch"], networks: ["data-net"], alwaysEnabled: true, cpus: 2, minimumMemoryMb: 512),
         S("playlist-worker", "Playlist synchronization", "Core", 512,
             "docker-compose/playlist-worker.yml.template", "Keeps playlists synchronized with your library.",
-            sourceFiles: ["Backend/Alexandria.Workers.Playlist/Dockerfile"], networks: ["data-net"]),
+            sourceFiles: ["Backend/Alexandria.Workers.Playlist/Dockerfile"], networks: ["data-net"], minimumMemoryMb: 256),
         S("transpilation-worker", "Transpilation worker", "Adaptive streaming", 1024,
             "docker-compose/transpilation-worker.yml.template", "Converts large media so it starts playing instantly anywhere.",
             features: [FeatureCatalog.AdaptiveStreaming.Id], sourceFiles: ["Backend/Alexandria.Workers.MediaTranspilation/Dockerfile"],
-            volumes: ["transpilation_worker_scratch"], networks: ["data-net"]),
+            volumes: ["transpilation_worker_scratch"], networks: ["data-net"], cpus: 4, minimumMemoryMb: 512, heavyCpu: true),
         S("media-metadata-worker", "Tagging coordinator", "Audio analysis support", 1024,
             "docker-compose/media-metadata-worker.yml.template", "Organizes the tag analysis pipeline after each upload.",
             features: [FeatureCatalog.AudioTaggingFast.Id, FeatureCatalog.AudioTaggingDeep.Id],
             allFeatures: [FeatureCatalog.Autotagging.Id],
             sourceFiles: ["Backend/Alexandria.Workers.MediaMetadata/Dockerfile"],
-            volumes: ["media_metadata_worker_scratch", "media_audio_data"], networks: ["data-net"]),
+            volumes: ["media_metadata_worker_scratch", "media_audio_data"], networks: ["data-net"], minimumMemoryMb: 512),
         S("lyrics-worker", "Lyrics finder", "Lyrics fetching", 512,
             "docker-compose/lyrics-worker.yml.template", "Searches online services for lyrics and saves them to your library.",
             features: [FeatureCatalog.Lyrics.Id], sourceFiles: ["Backend/Alexandria.Workers.Lyrics/Dockerfile"],
-            volumes: ["media_metadata_worker_scratch"], networks: ["data-net"]),
+            volumes: ["media_metadata_worker_scratch"], networks: ["data-net"], minimumMemoryMb: 256),
         S("essentia-effnet-worker", "Fast tagger (Effnet)", "Audio tagging - fast", 2048,
             "docker-compose/essentia-effnet-worker.yml.template", "Recognizes genre and mood of music right after upload.",
             features: [FeatureCatalog.AudioTaggingFast.Id], sourceFiles: ClassifierFiles,
             allFeatures: [FeatureCatalog.Autotagging.Id],
-            volumes: ["media_audio_data"], networks: ["essentia-net"], modelAssets: [AudioModels]),
+            volumes: ["media_audio_data"], networks: ["essentia-net"], modelAssets: [AudioModels], cpus: 4, heavyCpu: true),
         S("essentia-maest-worker", "Deep tagger (MAEST)", "Audio tagging - deep", 2048,
             "docker-compose/essentia-maest-worker.yml.template", "Richer, more detailed tags - slower and heavier than fast tagging.",
             features: [FeatureCatalog.AudioTaggingDeep.Id], sourceFiles: ClassifierFiles,
             allFeatures: [FeatureCatalog.Autotagging.Id],
-            volumes: ["media_audio_data"], networks: ["essentia-net"], modelAssets: [AudioModels]),
+            volumes: ["media_audio_data"], networks: ["essentia-net"], modelAssets: [AudioModels], cpus: 4, heavyCpu: true),
 
         S("prometheus", "Metrics collector", "Monitoring", 384, MonitoringTemplate,
             "Gathers performance numbers from every part of the system.",
@@ -151,7 +164,7 @@ public static class ServiceCatalog
             extraTemplates: ["config/prometheus.yml.template"], headroomMb: 416),
         S("grafana", "Dashboards", "Monitoring", 128, MonitoringTemplate,
             "Draws the health graphs you can open in the browser.",
-            features: [FeatureCatalog.Monitoring.Id], volumes: ["grafana_local_data"], networks: ["observability-net"],
+            features: [FeatureCatalog.Monitoring.Id], volumes: ["grafana_local_data"], networks: ["observability-net"], cpus: 0.5,
             sourceFiles: ["grafana/provisioning/dashboards/dashboard.yml", "grafana/provisioning/datasources/prometheus.yml",
                 "grafana/provisioning/datasources/loki.yml",
                 "grafana/provisioning/dashboards/alexandria-overview.json",
@@ -159,18 +172,18 @@ public static class ServiceCatalog
                 "grafana/provisioning/dashboards/alexandria-logs.json"]),
         S("cadvisor", "Container stats", "Monitoring", 160, MonitoringTemplate,
             "Watches how much CPU and memory each service uses.",
-            features: [FeatureCatalog.Monitoring.Id], networks: ["observability-net"]),
+            features: [FeatureCatalog.Monitoring.Id], networks: ["observability-net"], cpus: 0.5),
         S("postgres-exporter", "Database stats", "Monitoring", 64, MonitoringTemplate,
             "Reports database health and speed.",
-            features: [FeatureCatalog.Monitoring.Id], networks: ["data-net", "observability-net"]),
+            features: [FeatureCatalog.Monitoring.Id], networks: ["data-net", "observability-net"], cpus: 0.5),
         S("alloy", "Log shipper", "Monitoring", 128, MonitoringTemplate,
             "Collects logs from all services into one searchable place.",
             features: [FeatureCatalog.Monitoring.Id], sourceFiles: ["alloy/config.alloy"],
-            volumes: ["alloy_local_data"], networks: ["observability-net"]),
+            volumes: ["alloy_local_data"], networks: ["observability-net"], cpus: 0.5),
         S("loki", "Log storage", "Monitoring", 256, MonitoringTemplate,
             "Keeps the collected logs so you can look back in time.",
             features: [FeatureCatalog.Monitoring.Id], sourceFiles: ["loki/loki-config.yml"],
-            volumes: ["loki_local_data"], networks: ["observability-net"]),
+            volumes: ["loki_local_data"], networks: ["observability-net"], cpus: 0.5),
     ];
 
     public static ResolvedCapabilities Resolve(FeatureSelection features) => new(features);

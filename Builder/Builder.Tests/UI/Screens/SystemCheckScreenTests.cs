@@ -92,15 +92,12 @@ public class SystemCheckScreenTests
     }
 
     [Fact]
-    public void Run_dockerMissing_showsInstructionsAndAborts()
+    public void Run_dockerMissing_pointsToInstallGuideAndAborts()
     {
         var checker = Substitute.For<ISystemChecker>();
 
         checker.GetOperatingSystem().Returns(System.Runtime.InteropServices.OSPlatform.Linux);
         checker.IsDockerInstalled().Returns(false);
-
-        checker.GetDockerInstallInstructions()
-            .Returns(("curl -fsSL https://get.docker.com | sh", "https://docs.docker.com/engine/install/"));
 
         using var h = new ShellHarness(new FakeKeys().Enter());
 
@@ -111,6 +108,7 @@ public class SystemCheckScreenTests
         outcome.Should().Be(ScreenOutcome.Abort);
         h.Context.ShouldAbort.Should().BeTrue();
         h.Output.Should().Contain("Docker is not installed");
+        h.Output.Should().Contain("https://docs.docker.com/engine/install/");
     }
 
     [Fact]

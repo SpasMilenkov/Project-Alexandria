@@ -30,8 +30,8 @@ public static class SummaryScreen
             if (showServices)
             {
                 return new Rows(
-                    Views.Heading("What will run", "Every component this setup starts, with its share of memory."),
-                    BuildServicesView(context.Features));
+                    Views.Heading("What will run", "Every component this setup starts, with the memory and CPU it may use."),
+                    BuildServicesView(context.Features, context.Resources));
             }
 
             var chart = showBarChart
@@ -148,6 +148,9 @@ public static class SummaryScreen
         facts.Add(("Services", $"{capabilities.RunningServiceCount} ongoing + {capabilities.OneShotServiceIds.Count} setup jobs"));
         facts.Add(("Memory needed", $"about {calculator.CalculateMinimumRamMb(context.Features) / 1024.0:0.#} GB"));
 
+        var allocations = ResourceBudget.Plan(capabilities, context.Resources);
+        facts.Add(("Resource limits", LimitsFact(allocations, context.Resources)));
+
         foreach (var assets in capabilities.ModelAssets)
         {
             var details = $"{capabilities.AudioBackbone}; verified local cache in models; checksums verified again at worker startup";
@@ -167,7 +170,9 @@ public static class SummaryScreen
             facts.Add(("Model sourcing", context.Config.AllowModelDownloads
                 ? "Reuse verified local files; download missing or corrupt files from essentia.upf.edu (HTTPS)"
                 : "Local files only; model downloads disabled"));
-            facts.Add(("Audio processing", "One inference job at a time; up to 8 CPU cores and 2 GB worker memory"));
+            var tagger = allocations.First(allocation => allocation.ServiceId.StartsWith("essentia-", StringComparison.Ordinal));
+            facts.Add(("Audio processing",
+                $"One inference job at a time; up to {ResourceBudget.FormatCpus(tagger.Cpus)} CPU cores and {tagger.MemoryMb / 1024.0:0.#} GB worker memory"));
         }
 
         facts.Add(("Address", address));
@@ -177,31 +182,58 @@ public static class SummaryScreen
         return Views.Facts(facts);
     }
 
+    private static string LimitsFact(IReadOnlyList<ServiceAllocation> allocations, SystemResources resources)
+    {
+        var cappedMb = allocations.Sum(allocation => allocation.MemoryMb);
+        var machineMb = ResourceCalculator.MemoryLimitMb(resources);
+        var cores = ResourceCalculator.CpuLimit(resources);
+
+        if (machineMb <= 0 || cores <= 0)
+            return $"Containers capped at {cappedMb / 1024.0:0.#} GB memory in total; machine size unknown";
+
+        var reservedCores = ResourceBudget.ReservedCpuCores(cores);
+        var coreWord = reservedCores == 1 ? "core" : "cores";
+
+        return $"Containers capped at {cappedMb / 1024.0:0.#} GB memory in total; " +
+            $"{ResourceBudget.HostReserveMb(machineMb) / 1024.0:0.#} GB and {reservedCores} CPU {coreWord} kept free for this computer";
+    }
+
     // The final configured picture: every enabled component with a
-    // plain-language role and its share of memory
-    private static IRenderable BuildServicesView(FeatureSelection features)
+    // plain-language role and the caps the budget gave it
+    private static IRenderable BuildServicesView(FeatureSelection features, SystemResources resources)
     {
         var table = new Table().Border(TableBorder.Simple)
             .BorderStyle(Theme.Active.BorderStyle)
             .AddColumn($"[{Theme.Active.Ac}]Component[/]")
             .AddColumn($"[{Theme.Active.Ac}]What it does[/]")
-            .AddColumn(new TableColumn($"[{Theme.Active.Ac}]Memory[/]").RightAligned().NoWrap());
+            .AddColumn(new TableColumn($"[{Theme.Active.Ac}]Memory[/]").RightAligned().NoWrap())
+            .AddColumn(new TableColumn($"[{Theme.Active.Ac}]CPU[/]").RightAligned().NoWrap());
 
         var capabilities = ServiceCatalog.Resolve(features);
+        var allocations = ResourceBudget.Plan(capabilities, resources).ToDictionary(allocation => allocation.ServiceId);
 
         foreach (var group in capabilities.Services.GroupBy(service => service.Group))
         {
             foreach (var service in group)
             {
+                if (service.OneShot)
+                {
+                    table.AddRow(Markup.Escape(service.Name), Markup.Escape(service.Description),
+                        Ui.Muted("once, during setup"), string.Empty);
+                    continue;
+                }
+
+                var allocation = allocations[service.Id];
                 table.AddRow(
                     Markup.Escape(service.Name),
                     Markup.Escape(service.Description),
-                    service.OneShot ? Ui.Muted("once, during setup") : $"~{service.MemoryMb} MB");
+                    $"up to {allocation.MemoryMb} MB",
+                    $"{ResourceBudget.FormatCpus(allocation.Cpus)} cores");
             }
         }
 
         table.AddRow(Ui.Muted("Memory headroom"), Ui.Muted("Allowance included in the total planning estimate."),
-            $"{capabilities.Services.Where(service => !service.OneShot).Sum(service => service.MemoryHeadroomMb)} MB");
+            $"{capabilities.Services.Where(service => !service.OneShot).Sum(service => service.MemoryHeadroomMb)} MB", string.Empty);
 
         return table;
     }

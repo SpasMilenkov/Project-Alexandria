@@ -17,6 +17,15 @@
     networks:
       - data-net
 
+    # Swap capped at the memory cap, so hitting it restarts the container instead of
+    # pushing the host into swap.
+    memswap_limit: ${LIMIT_POSTGRES_MEMORY:-512M}
+    deploy:
+      resources:
+        limits:
+          cpus: "${LIMIT_POSTGRES_CPUS:-2}"
+          memory: ${LIMIT_POSTGRES_MEMORY:-512M}
+
     healthcheck:
       test: ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 5s
@@ -41,10 +50,12 @@
       - app-net # nginx proxies S3 requests from browser
       - data-net # api and workers talk to it directly
 
+    memswap_limit: ${LIMIT_GARAGE_MEMORY:-256M}
     deploy:
       resources:
         limits:
-          memory: 256M
+          cpus: "${LIMIT_GARAGE_CPUS:-1}"
+          memory: ${LIMIT_GARAGE_MEMORY:-256M}
         reservations:
           memory: 128M
 
@@ -116,6 +127,14 @@
     networks:
       - data-net
 {{RABBITMQ_ESSENTIA_NET}}
+
+    # RabbitMQ sizes its memory alarm from this cap and blocks publishers before reaching it.
+    memswap_limit: ${LIMIT_RABBITMQ_MEMORY:-512M}
+    deploy:
+      resources:
+        limits:
+          cpus: "${LIMIT_RABBITMQ_CPUS:-1}"
+          memory: ${LIMIT_RABBITMQ_MEMORY:-512M}
 
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]

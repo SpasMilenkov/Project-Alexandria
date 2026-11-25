@@ -67,9 +67,13 @@
         max-size: "10m"
         max-file: "5"
 
+    # Swap capped at the memory cap, so hitting it restarts the container instead of
+    # pushing the host into swap.
+    memswap_limit: ${LIMIT_LYRICS_WORKER_MEMORY:-512M}
     deploy:
       resources:
         limits:
-          memory: 1.5G
+          cpus: "${LIMIT_LYRICS_WORKER_CPUS:-1}"
+          memory: ${LIMIT_LYRICS_WORKER_MEMORY:-512M}
         reservations:
-          memory: 512M
+          memory: 256M

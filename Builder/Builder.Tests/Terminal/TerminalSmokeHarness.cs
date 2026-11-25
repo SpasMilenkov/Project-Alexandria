@@ -92,8 +92,6 @@ internal static class TerminalSmokeHarness
         public bool IsPortAvailable(int port) => true;
 
         public string GetProcessUsingPort(int port) => string.Empty;
-
-        public (string command, string url) GetDockerInstallInstructions() => (string.Empty, string.Empty);
     }
 
     private sealed class SmokeDockerService(string mode, string scratch) : IDockerService

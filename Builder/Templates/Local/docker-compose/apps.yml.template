@@ -99,10 +99,14 @@
         max-size: "10m"
         max-file: "5"
 
+    # Swap capped at the memory cap, so hitting it restarts the container instead of
+    # pushing the host into swap.
+    memswap_limit: ${LIMIT_API_MEMORY:-512M}
     deploy:
       resources:
         limits:
-          memory: 512M
+          cpus: "${LIMIT_API_CPUS:-2}"
+          memory: ${LIMIT_API_MEMORY:-512M}
         reservations:
           memory: 256M
 
@@ -128,10 +132,12 @@
     networks:
       - app-net
 
+    memswap_limit: ${LIMIT_FRONTEND_MEMORY:-128M}
     deploy:
       resources:
         limits:
-          memory: 128M
+          cpus: "${LIMIT_FRONTEND_CPUS:-0.5}"
+          memory: ${LIMIT_FRONTEND_MEMORY:-128M}
         reservations:
           memory: 64M
 
@@ -163,10 +169,12 @@
       api:
         condition: service_healthy # wait for the healthcheck to pass
 
+    memswap_limit: ${LIMIT_NGINX_MEMORY:-64M}
     deploy:
       resources:
         limits:
-          memory: 64M
+          cpus: "${LIMIT_NGINX_CPUS:-1}"
+          memory: ${LIMIT_NGINX_MEMORY:-64M}
         reservations:
           memory: 32M
 

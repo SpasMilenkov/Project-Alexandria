@@ -26,8 +26,6 @@ public interface ISystemChecker
 
     string GetProcessUsingPort(int port);
 
-    (string command, string url) GetDockerInstallInstructions();
-
     string GetDockerFailureDetails() => string.Empty;
 
     string? GetDockerContextError() => null;
@@ -350,23 +348,6 @@ public class SystemChecker : ISystemChecker
         {
             return null;
         }
-    }
-
-    public (string command, string url) GetDockerInstallInstructions()
-    {
-        var os = GetOperatingSystem();
-
-        if (os == OSPlatform.Linux)
-        {
-            return ("curl -fsSL https://get.docker.com | sh", "https://docs.docker.com/engine/install/");
-        }
-
-        if (os == OSPlatform.OSX)
-        {
-            return ("brew install --cask docker", "https://docs.docker.com/desktop/install/mac-install/");
-        }
-
-        return ("winget install Docker.DockerDesktop", "https://docs.docker.com/desktop/install/windows-install/");
     }
 
     public bool IsPortAvailable(int port)

@@ -64,6 +64,21 @@ public class SummaryAndSuccessScreenTests
         harness.Output.Should().Contain("once, during setup");
     }
 
+    [Theory]
+    [InlineData(false, "GB and 1 CPU core kept free", "up to 3 CPU cores")]
+    [InlineData(true, "up to 2048 MB", "3 cores")]
+    public void Summary_measuredMachine_showsTheBudgetedCapsAndTheHostReserve(bool servicesView, string first, string second)
+    {
+        var keys = servicesView ? new FakeKeys().Text("a").Enter() : new FakeKeys().Enter();
+        using var harness = new ShellHarness(keys);
+        harness.Context.Features = new Builder.Catalog.FeatureSelection { Enabled = ["audio-tagging-deep", "autotagging"] };
+        harness.Context.Resources = new SystemResources { CpuCores = 4, TotalMemoryMb = 16384 };
+
+        SummaryScreen.Run(harness.Shell, new ResourceCalculator()).Should().Be(ScreenOutcome.Continue);
+
+        harness.Output.Should().Contain(first).And.Contain(second);
+    }
+
     [Fact]
     public void Summary_confirmed_continuesWithoutAborting()
     {

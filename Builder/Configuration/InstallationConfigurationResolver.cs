@@ -6,6 +6,7 @@ using Builder.Credentials;
 using Builder.Docker;
 using Builder.Network;
 using Builder.Storage;
+using Builder.SystemCheck;
 using Builder.Workflow;
 
 namespace Builder.Configuration;
@@ -287,6 +288,20 @@ public static class InstallationConfigurationResolver
         foreach (var key in ServiceCatalog.Resolve(draft.Features).EnvironmentFlags.Keys)
         {
             values[key] = defaults[key];
+        }
+
+        // Limits follow the current machine and selection, so a repair after a hardware or
+        // feature change never keeps caps that no longer fit.
+        var limits = ResourceBudget.EnvironmentValues(ResourceBudget.Plan(ServiceCatalog.Resolve(draft.Features), context.Resources));
+
+        foreach (var key in values.Keys.Where(key => key.StartsWith(ResourceBudget.EnvironmentPrefix, StringComparison.Ordinal) && !limits.ContainsKey(key)).ToArray())
+        {
+            values.Remove(key);
+        }
+
+        foreach (var (key, value) in limits)
+        {
+            values[key] = value;
         }
 
         if (!recognizedRepair)

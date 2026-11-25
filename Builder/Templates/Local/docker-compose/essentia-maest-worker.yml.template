@@ -17,6 +17,10 @@
       ESSENTIA_IDLE_UNLOAD_SECONDS: "${ESSENTIA_IDLE_UNLOAD_SECONDS:-300}"
       PYTHONDONTWRITEBYTECODE: "1"
       HOME: /tmp
+      # TensorFlow and OpenMP size their pools from the host's cores, not the CPU cap.
+      TF_NUM_INTRAOP_THREADS: "${LIMIT_ESSENTIA_MAEST_WORKER_CPUS:-4}"
+      TF_NUM_INTEROP_THREADS: "1"
+      OMP_NUM_THREADS: "${LIMIT_ESSENTIA_MAEST_WORKER_CPUS:-4}"
 
     volumes:
       - ./models:/app/models:ro
@@ -29,8 +33,11 @@
     networks:
       - essentia-net
 
+    # Swap capped at the memory cap, so hitting it restarts the container instead of
+    # pushing the host into swap.
+    memswap_limit: ${LIMIT_ESSENTIA_MAEST_WORKER_MEMORY:-2048M}
     deploy:
       resources:
         limits:
-          cpus: "8"
-          memory: 2G
+          cpus: "${LIMIT_ESSENTIA_MAEST_WORKER_CPUS:-4}"
+          memory: ${LIMIT_ESSENTIA_MAEST_WORKER_MEMORY:-2048M}
