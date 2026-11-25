@@ -5,6 +5,7 @@ using Alexandria.Common.Exceptions.Transpilation;
 using Alexandria.Common.Settings;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Services.Streaming;
+using Alexandria.Services.Streaming.VideoEncoding;
 using Alexandria.Tests.Unit.Common;
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
@@ -241,7 +242,7 @@ public class TranscodeProcessTests
                 "-f lavfi -i testsrc2=size=160x90:rate=10:duration=2 -f lavfi -i sine=duration=2 " +
                 $"-c:v libx264 -preset ultrafast -threads 1 -c:a aac \"{input}\"", ct);
 
-            var sut = new VideoTranspilationService(NullLogger<VideoTranspilationService>.Instance, _unitOfWork);
+            var sut = VideoService(VideoEncoderSelection.Cpu);
 
             var output = await sut.TranspileAsync(_jobId, input, Path.Combine(directory, "out"), [VideoRung.P360], ct);
 
@@ -252,6 +253,121 @@ public class TranscodeProcessTests
         {
             Directory.Delete(directory, recursive: true);
         }
+    }
+
+    // /dev/null exists but is no GPU, so both GPU attempts fail inside ffmpeg and the CPU pass
+    // has to finish the job from a clean output folder.
+    [Fact]
+    public async Task VideoTranspileAsync_gpuThatCannotEncode_fallsBackToTheCpu()
+    {
+        Assert.SkipUnless(OnPath("ffmpeg"), "ffmpeg is not installed.");
+        StatusIs(JobStatus.Processing);
+        var ct = TestContext.Current.CancellationToken;
+        var directory = Directory.CreateTempSubdirectory("transcode-process-test-").FullName;
+
+        try
+        {
+            var input = Path.Combine(directory, "source.mp4");
+            await GenerateAsync(
+                "-f lavfi -i testsrc2=size=320x180:rate=10:duration=2 -f lavfi -i sine=duration=2 " +
+                $"-c:v libx264 -preset ultrafast -threads 1 -c:a aac \"{input}\"", ct);
+
+            var sut = VideoService(new VideoEncoderSelection("/dev/null"));
+
+            var output = await sut.TranspileAsync(_jobId, input, Path.Combine(directory, "out"),
+                [VideoRung.P360], ct);
+
+            var manifest = await File.ReadAllTextAsync(Path.Combine(output.DashDirectory, "manifest.mpd"), ct);
+            manifest.Should().Contain("width=\"640\"").And.Contain("contentType=\"audio\"");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    // Runs only on a machine whose first render node passes the VAAPI probe. A moving test pattern
+    // is busy enough to need the capped re-encode on some GPUs and a flat colour never is; which
+    // path a GPU takes varies, but the published lanes must fit their ceilings either way.
+    [Theory]
+    [InlineData("testsrc2=size=1280x720:rate=30:duration=8")]
+    [InlineData("color=c=gray:size=1280x720:rate=30:duration=8")]
+    public async Task VideoTranspileAsync_workingGpu_encodesEveryLaneOnItWithinItsCeiling(string source)
+    {
+        const string device = "/dev/dri/renderD128";
+        Assert.SkipUnless(OnPath("ffmpeg") && OnPath("ffprobe"), "ffmpeg and ffprobe are not installed.");
+        var ct = TestContext.Current.CancellationToken;
+        var probe = await new VaapiEncoderProbe(NullLogger<VaapiEncoderProbe>.Instance).ProbeAsync(device, ct);
+        Assert.SkipUnless(probe.Usable, $"No VAAPI GPU at {device}: {probe.Detail}");
+
+        StatusIs(JobStatus.Processing);
+        var directory = Directory.CreateTempSubdirectory("transcode-process-test-").FullName;
+        var logger = new RecordingLogger<VideoTranspilationService>();
+
+        try
+        {
+            var input = Path.Combine(directory, "source.mp4");
+            await GenerateAsync(
+                $"-f lavfi -i {source} -f lavfi -i sine=duration=8 " +
+                $"-c:v libx264 -preset ultrafast -threads 1 -c:a aac \"{input}\"", ct);
+
+            var selector = Substitute.For<IVideoEncoderSelector>();
+            selector.SelectAsync(Arg.Any<CancellationToken>()).Returns(new VideoEncoderSelection(device));
+            var sut = new VideoTranspilationService(logger, _unitOfWork, selector);
+
+            var output = await sut.TranspileAsync(_jobId, input, Path.Combine(directory, "out"),
+                [VideoRung.P360, VideoRung.P720], ct);
+
+            foreach (var entry in logger.Entries)
+                TestContext.Current.TestOutputHelper?.WriteLine($"{entry.Level}: {entry.Message}");
+
+            var manifestPath = Path.Combine(output.DashDirectory, "manifest.mpd");
+            var manifest = await File.ReadAllTextAsync(manifestPath, ct);
+            manifest.Should().Contain("width=\"640\"").And.Contain("width=\"1280\"").And.Contain("bandwidth=\"2500000\"");
+            manifest.Should().Contain("<S t=\"0\" d=\"92160\" />", "the forced keyframe cuts the first segment at 6 s");
+            LaneBitrateCheck.FindProblem(manifestPath, [new(640, 360, 800, 28), new(1280, 720, 2500, 23)]).Should().BeNull();
+            logger.Entries.Should().Contain(entry => entry.Message.Contains("with GpuDecodeAndEncode"));
+            logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Warning);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task VideoTranspileAsync_sourceWithoutAudio_publishesVideoOnly()
+    {
+        Assert.SkipUnless(OnPath("ffmpeg") && OnPath("ffprobe"), "ffmpeg and ffprobe are not installed.");
+        StatusIs(JobStatus.Processing);
+        var ct = TestContext.Current.CancellationToken;
+        var directory = Directory.CreateTempSubdirectory("transcode-process-test-").FullName;
+
+        try
+        {
+            var input = Path.Combine(directory, "source.mp4");
+            await GenerateAsync(
+                $"-f lavfi -i testsrc2=size=160x90:rate=10:duration=2 -c:v libx264 -preset ultrafast -threads 1 \"{input}\"", ct);
+
+            var sut = VideoService(VideoEncoderSelection.Cpu);
+
+            var output = await sut.TranspileAsync(_jobId, input, Path.Combine(directory, "out"), [VideoRung.P360], ct);
+
+            var manifest = await File.ReadAllTextAsync(Path.Combine(output.DashDirectory, "manifest.mpd"), ct);
+            manifest.Should().Contain("contentType=\"video\"").And.NotContain("contentType=\"audio\"");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private VideoTranspilationService VideoService(VideoEncoderSelection encoder)
+    {
+        var selector = Substitute.For<IVideoEncoderSelector>();
+        selector.SelectAsync(Arg.Any<CancellationToken>()).Returns(encoder);
+
+        return new VideoTranspilationService(NullLogger<VideoTranspilationService>.Instance, _unitOfWork, selector);
     }
 
     private static async Task GenerateAsync(string arguments, CancellationToken ct)

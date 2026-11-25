@@ -6,7 +6,7 @@ using Alexandria.Workers.MediaTranspilation.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Serilog;
 
-var probeExitCode = await HttpHealthProbe.TryRunAsync(args);
+var probeExitCode = await HttpHealthProbe.TryRunAsync(args) ?? await GpuProbeCommand.TryRunAsync(args);
 if (probeExitCode is { } exitCode)
 {
     Environment.ExitCode = exitCode;

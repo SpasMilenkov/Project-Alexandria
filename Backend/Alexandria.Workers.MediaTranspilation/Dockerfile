@@ -2,10 +2,14 @@
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.12-resolute-amd64@sha256:67c94b99341ac046603156a7025ea5ea22a41949ec2cef126d22d3a7bbe21963 AS base
 WORKDIR /app
 
-# Install FFmpeg for media processing
+# FFmpeg for media processing, plus the VAAPI drivers its h264_vaapi encoder needs to use an
+# AMD (mesa-va-drivers) or Intel (intel-media-va-driver) GPU when one is mapped into the
+# container. Without a GPU they are unused and video is encoded on the CPU.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     curl \
+    mesa-va-drivers \
+    intel-media-va-driver \
     && rm -rf /var/lib/apt/lists/*
 
 # ===== BUILD IMAGE =====

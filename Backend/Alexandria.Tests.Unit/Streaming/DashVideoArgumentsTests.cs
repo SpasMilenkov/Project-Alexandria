@@ -1,4 +1,4 @@
-using Alexandria.Services.Streaming;
+using Alexandria.Services.Streaming.VideoEncoding;
 using AwesomeAssertions;
 
 namespace Alexandria.Tests.Unit.Streaming;
@@ -91,6 +91,84 @@ public class DashVideoArgumentsTests
 
         arguments.Should().Contain("-i \"/in/my source\"");
         arguments.Should().EndWith("\"/out/dash dir/manifest.mpd\"");
+    }
+
+    private static string BuildGpu(
+        GpuRateControl rateControl = GpuRateControl.ConstantQuality,
+        bool gpuDecode = true,
+        bool hasAudio = true) =>
+        DashVideoArguments.ForGpu("/in/source", "/out/manifest.mpd", Ladder, hasAudio, "/dev/dri/renderD128",
+            gpuDecode, rateControl);
+
+    [Fact]
+    public void ForGpu_ladder_scalesEveryLaneOnTheGpuAndMapsItsOutput()
+    {
+        var arguments = BuildGpu();
+        var tokens = Tokens(arguments);
+
+        arguments.Should().Contain("-init_hw_device \"vaapi=va:/dev/dri/renderD128\" -filter_hw_device va");
+        arguments.Should().Contain(
+            "\"[0:V:0]format=nv12,hwupload,split=3[s0][s1][s2];" +
+            "[s0]scale_vaapi=w=640:h=360:extra_hw_frames=16[v0];" +
+            "[s1]scale_vaapi=w=1280:h=720:extra_hw_frames=16[v1];" +
+            "[s2]scale_vaapi=w=1920:h=1080:extra_hw_frames=16[v2]\"");
+
+        tokens.Where((_, index) => index > 0 && tokens[index - 1] == "-map").Should()
+            .Equal("[v0]", "[v1]", "[v2]", "0:a:0");
+    }
+
+    [Fact]
+    public void ForGpu_constantQuality_usesTheLaneQualityAsQpAndAdvertisesTheCeiling()
+    {
+        var tokens = Tokens(BuildGpu(GpuRateControl.ConstantQuality));
+
+        for (var i = 0; i < Ladder.Length; i++)
+        {
+            var lane = Ladder[i];
+
+            ValueAfter(tokens, $"-c:v:{i}").Should().Be("h264_vaapi");
+            ValueAfter(tokens, $"-rc_mode:v:{i}").Should().Be("CQP");
+            ValueAfter(tokens, $"-qp:v:{i}").Should().Be(lane.Crf.ToString());
+            ValueAfter(tokens, $"-b:v:{i}").Should().Be($"{lane.BitrateKbps}k");
+        }
+
+        tokens.Should().NotContain(token => token.StartsWith("-maxrate", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ForGpu_cappedBitrate_holdsEveryLaneToItsCeiling()
+    {
+        var tokens = Tokens(BuildGpu(GpuRateControl.CappedBitrate));
+
+        for (var i = 0; i < Ladder.Length; i++)
+        {
+            var lane = Ladder[i];
+
+            ValueAfter(tokens, $"-rc_mode:v:{i}").Should().Be("VBR");
+            ValueAfter(tokens, $"-b:v:{i}").Should().Be($"{lane.BitrateKbps}k");
+            ValueAfter(tokens, $"-maxrate:v:{i}").Should().Be($"{lane.BitrateKbps}k");
+            ValueAfter(tokens, $"-bufsize:v:{i}").Should().Be($"{lane.BitrateKbps * 2}k");
+        }
+
+        tokens.Should().NotContain(token => token.StartsWith("-qp", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ForGpu_gpuDecode_addsTheHardwareDecoderOnlyWhenAsked(bool gpuDecode)
+    {
+        BuildGpu(gpuDecode: gpuDecode).Contains("-hwaccel vaapi -hwaccel_device va -i").Should().Be(gpuDecode);
+    }
+
+    [Fact]
+    public void ForGpu_sharesSegmentsAndAudioRulesWithTheCpuCommand()
+    {
+        var gpu = BuildGpu(hasAudio: false);
+        var cpu = Build(hasAudio: false);
+
+        gpu[gpu.IndexOf("-force_key_frames", StringComparison.Ordinal)..].Should()
+            .Be(cpu[cpu.IndexOf("-force_key_frames", StringComparison.Ordinal)..]);
     }
 
     [Fact]
