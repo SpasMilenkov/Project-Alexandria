@@ -97,6 +97,7 @@ public static class ServiceExtensions
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<IListeningStatsService, ListeningStatsService>();
         services.AddScoped<IOverviewSummaryRepository, OverviewSummaryRepository>();
+        services.AddScoped<IOutboxMessageRepository, OutboxMessageRepository>();
         services.AddScoped<ICaptureMetadataRepository, CaptureMetadataRepository>();
         services.AddScoped<IDocumentMetadataRepository, DocumentMetadataRepository>();
         services.AddScoped<IDocumentTextRepository, DocumentTextRepository>();

@@ -38,6 +38,16 @@ public interface IUnitOfWork : IDisposable
     IOperationalEventRepository OperationalEvents { get; }
     IJobRepository Jobs { get; }
     IOverviewSummaryRepository OverviewSummaries { get; }
+    IOutboxMessageRepository OutboxMessages { get; }
+
+    /// <summary>True between <see cref="BeginTransactionAsync"/> and the matching commit or rollback.</summary>
+    bool HasActiveTransaction { get; }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> once the outermost transaction has committed. It is dropped
+    /// if the transaction rolls back or the commit fails.
+    /// </summary>
+    void AfterCommit(Action action);
 
     public Task BeginTransactionAsync(CancellationToken cancellationToken = default);
 

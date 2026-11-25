@@ -1489,6 +1489,72 @@ namespace Alexandria.Data.Migrations
                     b.ToTable("OperationalEvents", (string)null);
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("AvailableAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("Body")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("RoutingKey")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AvailableAt")
+                        .HasDatabaseName("IX_OutboxMessages_Pending")
+                        .HasFilter("\"SentAt\" IS NULL AND \"DeadAt\" IS NULL");
+
+                    b.HasIndex("DeadAt")
+                        .HasDatabaseName("IX_OutboxMessages_Dead")
+                        .HasFilter("\"DeadAt\" IS NOT NULL");
+
+                    b.HasIndex("SentAt")
+                        .HasDatabaseName("IX_OutboxMessages_Sent")
+                        .HasFilter("\"SentAt\" IS NOT NULL");
+
+                    b.ToTable("OutboxMessages", (string)null);
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.OverviewSummary", b =>
                 {
                     b.Property<Guid>("Id")

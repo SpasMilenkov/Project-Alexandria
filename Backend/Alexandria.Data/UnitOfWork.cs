@@ -40,6 +40,7 @@ public sealed class UnitOfWork(
     IOperationalEventRepository operationalEvents,
     IJobRepository jobs,
     IOverviewSummaryRepository overviewSummaries,
+    IOutboxMessageRepository outboxMessages,
     AlexandriaDbContext dbContext) : IUnitOfWork
 {
     public IFileRepository Files { get; } = files;
@@ -76,7 +77,13 @@ public sealed class UnitOfWork(
     public IOperationalEventRepository OperationalEvents { get; } = operationalEvents;
     public IJobRepository Jobs { get; } = jobs;
     public IOverviewSummaryRepository OverviewSummaries { get; } = overviewSummaries;
+    public IOutboxMessageRepository OutboxMessages { get; } = outboxMessages;
     private IDbContextTransaction? _transaction;
+    private readonly List<Action> _afterCommit = [];
+
+    public bool HasActiveTransaction => _transaction is not null;
+
+    public void AfterCommit(Action action) => _afterCommit.Add(action);
 
     private bool _disposed;
 
@@ -102,6 +109,10 @@ public sealed class UnitOfWork(
         // Only commit when all nested transactions are complete
         if (_transactionCount == 0)
         {
+            // Taken before committing so a failed commit drops the callbacks with the transaction.
+            var afterCommit = _afterCommit.ToList();
+            _afterCommit.Clear();
+
             try
             {
                 await SaveChangesAsync(cancellationToken);
@@ -112,6 +123,9 @@ public sealed class UnitOfWork(
                 await _transaction!.DisposeAsync();
                 _transaction = null;
             }
+
+            foreach (var action in afterCommit)
+                action();
         }
     }
 
@@ -122,6 +136,7 @@ public sealed class UnitOfWork(
         // next save on the same context would write it after all. This runs before the early
         // return because a failed CommitAsync has already disposed the transaction by now.
         dbContext.ChangeTracker.Clear();
+        _afterCommit.Clear();
 
         if (_transaction is null) return;
 
