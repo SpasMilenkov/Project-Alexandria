@@ -137,5 +137,6 @@ public enum AuditEventCode
     AuditLogsPurged,
 
     // Admin actions added later; kept last so earlier values keep their numbers
-    DocumentTextRetried
+    DocumentTextRetried,
+    OutboxMessagesResent
 }

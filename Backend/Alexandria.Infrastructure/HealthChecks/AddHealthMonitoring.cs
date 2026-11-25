@@ -8,8 +8,10 @@ namespace Alexandria.Infrastructure.HealthChecks;
 
 public static class HealthMonitoringExtension
 {
+    // A slow outbox means delayed background work, not an API that cannot serve requests, so it
+    // must never fail the container's readiness probe.
     public static bool IsEssentialReadinessCheck(HealthCheckRegistration registration)
-        => !registration.Tags.Contains("worker");
+        => !registration.Tags.Contains("worker") && !registration.Tags.Contains("outbox");
 
     public static IServiceCollection AddHealthMonitoring(
         this IServiceCollection services, IConfiguration config)
@@ -25,7 +27,10 @@ public static class HealthMonitoringExtension
 
         // A deployment without a broker must not raise a permanent rabbitmq incident.
         if (hcConfig.GetValue<bool>("MessageBroker:Enabled") && RabbitMqExtensions.IsBrokerEnabled(config))
+        {
             builder.AddCheck<RabbitMqHealthCheck>("rabbitmq", tags: ["infrastructure"]);
+            builder.AddCheck<OutboxHealthCheck>("outbox", tags: ["outbox"]);
+        }
 
         // Workers: dynamic, config-driven, no hardcoding
         var workers = hcConfig.GetSection("Workers").Get<List<WorkerConfig>>() ?? [];
