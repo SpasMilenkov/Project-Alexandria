@@ -2,6 +2,7 @@ using Alexandria.Common.Health;
 using Alexandria.Api.Extensions;
 using Alexandria.Api.Features.Auth.Extensions;
 using Alexandria.Api.Middlewares;
+using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.HealthChecks;
 using Alexandria.Infrastructure.Messaging;
@@ -29,7 +30,7 @@ bld.Services
     .AddJwtAuthentication(bld.Configuration)
     .AddAuthorizationPolicies()
     .AddS3Storage(bld.Configuration)
-    .AddRabbitMqAsync(bld.Configuration)
+    .AddRabbitMqAsync(bld.Configuration, ServiceType.Api)
     .AddApiServices(bld.Configuration)
     .AddServices()
     .AddAutoTagging(bld.Configuration)

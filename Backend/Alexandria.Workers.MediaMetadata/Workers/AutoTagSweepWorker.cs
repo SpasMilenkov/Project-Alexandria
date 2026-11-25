@@ -1,7 +1,6 @@
 using System.Text;
 using Alexandria.Common;
 using Alexandria.Common.Config;
-using Alexandria.Common.Exceptions;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
 using Alexandria.Services.Storage.AutoTagging;
@@ -14,13 +13,13 @@ namespace Alexandria.Workers.MediaMetadata.Workers;
 /// Safety net for the auto-tag pipeline. Runs on a timer
 /// (<c>Tagging:AutoTagSyncIntervalSeconds</c>) and does two jobs:
 /// <list type="bullet">
-/// <item><b>Backstop</b> — re-queues files whose enrichment committed but whose tag sync
+/// <item><b>Backstop</b>: re-queues files whose enrichment committed but whose tag sync
 /// was lost (worker crash between commit and enqueue) by pushing their file IDs into the
 /// in-process <see cref="AutoTagQueueService"/>.</item>
-/// <item><b>Failed retry</b> — re-publishes <c>media-metadata.enrich</c> for files whose
+/// <item><b>Failed retry</b>: re-enqueues <c>media-metadata.enrich</c> for files whose
 /// newest enrichment attempt is <c>Failed</c>/<c>MissingOutput</c> and older than
 /// <c>Tagging:RetryCooldownHours</c> (default 24h), skipping client-encrypted files.
-/// Throttled by the attempt cooldown — no per-file failure counters.</item>
+/// Throttled by the attempt cooldown, with no per-file failure counters.</item>
 /// </list>
 /// Registered only while <see cref="ProcessingCapabilities.AutoTaggingActive"/> holds.
 /// </summary>
@@ -29,7 +28,6 @@ public partial class AutoTagSweepWorker(
     IOptions<AutoTaggingOptions> taggingOptions,
     IServiceProvider serviceProvider,
     AutoTagQueueService queue,
-    IPublisherService publisher,
     IOptions<ProcessingCapabilities> capabilities) : BackgroundService
 {
     private const string EnrichRoutingKey = "media-metadata.enrich";
@@ -51,10 +49,6 @@ public partial class AutoTagSweepWorker(
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
                 break;
-            }
-            catch (MessageBrokerUnavailableException ex)
-            {
-                LogSweepRetrySkipped(logger, ex.Message);
             }
             catch (Exception ex)
             {
@@ -93,14 +87,18 @@ public partial class AutoTagSweepWorker(
         // Job B — failed retry: re-trigger enrichment past the cooldown.
         var cutoff = DateTime.UtcNow.Add(-cooldown);
         var retry = (await unitOfWork.EssentiaBatchFiles.GetAutoTagRetryCandidatesAsync(cutoff, JobRetryPolicy.MaxAutoRetries, ct)).ToList();
-        foreach (var fileId in retry)
-        {
-            await publisher.PublishAsync(
-                Encoding.UTF8.GetBytes(fileId.ToString()),
-                EnrichRoutingKey);
-        }
 
-        if (retry.Count > 0)
-            LogRetryQueued(logger, retry.Count);
+        if (retry.Count == 0)
+            return;
+
+        var outbox = scope.ServiceProvider.GetRequiredService<IOutbox>();
+
+        await unitOfWork.InTransactionAsync(async () =>
+        {
+            foreach (var fileId in retry)
+                await outbox.EnqueueAsync(EnrichRoutingKey, Encoding.UTF8.GetBytes(fileId.ToString()), ct);
+        }, ct);
+
+        LogRetryQueued(logger, retry.Count);
     }
 }

@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Alexandria.Common;
 using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions;
+using Alexandria.Common.Exceptions.Transpilation;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
@@ -19,7 +20,7 @@ public class TranspilationCapabilityTests
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly ITranspilationJobRepository _transpilations = Substitute.For<ITranspilationJobRepository>();
     private readonly IJobRepository _jobs = Substitute.For<IJobRepository>();
-    private readonly IPublisherService _publisher = Substitute.For<IPublisherService>();
+    private readonly IOutbox _outbox = Substitute.For<IOutbox>();
     private readonly IMessageBrokerStatus _broker = Substitute.For<IMessageBrokerStatus>();
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _versionId = Guid.NewGuid();
@@ -32,7 +33,7 @@ public class TranspilationCapabilityTests
         _broker.IsAvailable.Returns(true);
     }
 
-    private TranspilationJobService CreateSut(bool enabled) => new(_unitOfWork, _publisher, _broker,
+    private TranspilationJobService CreateSut(bool enabled) => new(_unitOfWork, _outbox, _broker,
         Substitute.For<ILogger<TranspilationJobService>>(),
         Options.Create(new ProcessingCapabilities { AdaptiveStreaming = enabled }));
 
@@ -46,7 +47,7 @@ public class TranspilationCapabilityTests
 
         await _jobs.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
         await _transpilations.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
-        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, default, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -58,7 +59,15 @@ public class TranspilationCapabilityTests
         result.Status.Should().Be(JobStatus.Queued);
         await _jobs.Received(1).AddAsync(Arg.Is<Job>(j => j.Type == JobType.Transpilation),
             TestContext.Current.CancellationToken);
-        await _publisher.Received(1).PublishAsync(Arg.Any<byte[]>(), "transpilation.job");
+        await _outbox.Received(1).EnqueueJobAsync("transpilation.job", Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        Received.InOrder(() =>
+        {
+            _unitOfWork.BeginTransactionAsync(Arg.Any<CancellationToken>());
+            _jobs.AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
+            _transpilations.AddAsync(Arg.Any<TranspilationJob>(), Arg.Any<CancellationToken>());
+            _outbox.EnqueueJobAsync("transpilation.job", Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+            _unitOfWork.CommitAsync(Arg.Any<CancellationToken>());
+        });
     }
 
     [Theory]
@@ -86,7 +95,56 @@ public class TranspilationCapabilityTests
 
         job.Job.Status.Should().Be(JobStatus.Failed);
         await _jobs.DidNotReceiveWithAnyArgs().UpdateStatusAsync(default, default, default, default, default);
-        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+        await _jobs.DidNotReceiveWithAnyArgs().TryRequeueFinishedAsync(default, TestContext.Current.CancellationToken);
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, default, TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task UpdateStatusAsync_requeue_claims_the_finished_job_then_enqueues_in_one_transaction()
+    {
+        var job = FailedTranspilation();
+        _jobs.TryRequeueFinishedAsync(job.JobId, Arg.Any<CancellationToken>()).Returns(true);
+
+        await CreateSut(true).UpdateStatusAsync(job.Id, _userId, JobStatus.Queued,
+            [AudioRung.Kbps96], [], TestContext.Current.CancellationToken);
+
+        Received.InOrder(() =>
+        {
+            _unitOfWork.BeginTransactionAsync(Arg.Any<CancellationToken>());
+            _jobs.TryRequeueFinishedAsync(job.JobId, Arg.Any<CancellationToken>());
+            _transpilations.UpdateDetailsAsync(job.Id, Arg.Any<string?>(), Arg.Any<AudioRung[]?>(),
+                Arg.Any<VideoRung[]?>(), Arg.Any<CancellationToken>());
+            _outbox.EnqueueJobAsync("transpilation.job", job.JobId, Arg.Any<CancellationToken>());
+            _unitOfWork.CommitAsync(Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Fact]
+    public async Task UpdateStatusAsync_requeue_of_a_job_a_worker_claimed_since_the_read_is_rejected()
+    {
+        var job = FailedTranspilation();
+        _jobs.TryRequeueFinishedAsync(job.JobId, Arg.Any<CancellationToken>()).Returns(false);
+        _jobs.GetStatusAsync(job.JobId, Arg.Any<CancellationToken>()).Returns(JobStatus.Processing);
+
+        var act = () => CreateSut(true).UpdateStatusAsync(job.Id, _userId, JobStatus.Queued,
+            [AudioRung.Kbps96], [], TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidTranspilationTransitionException>();
+        await _unitOfWork.Received(1).RollbackAsync(Arg.Any<CancellationToken>());
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, default, TestContext.Current.CancellationToken);
+    }
+
+    private TranspilationJob FailedTranspilation()
+    {
+        var job = new TranspilationJob
+        {
+            Id = Guid.NewGuid(), JobId = Guid.NewGuid(), UserId = _userId,
+            Job = new Job { Status = JobStatus.Failed }
+        };
+        _transpilations.FirstOrDefaultAsync(Arg.Any<Expression<Func<TranspilationJob, bool>>>(),
+            Arg.Any<CancellationToken>()).Returns(job);
+
+        return job;
     }
 
     [Fact]
@@ -98,6 +156,6 @@ public class TranspilationCapabilityTests
         var result = await CreateSut(false).GetByIdAsync(job.Id, TestContext.Current.CancellationToken);
 
         result.Status.Should().Be(JobStatus.Ready);
-        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, default, TestContext.Current.CancellationToken);
     }
 }

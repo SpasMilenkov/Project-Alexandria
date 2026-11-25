@@ -1,4 +1,5 @@
 using Alexandria.Common.Health;
+using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.DocumentWorker;
 using Alexandria.Infrastructure.Messaging;
@@ -30,7 +31,7 @@ try
     builder.Services
         .AddWorkerDatabase(builder.Configuration)
         .AddRabbitMqConsumer(builder.Configuration)
-        .AddRabbitMqAsync(builder.Configuration)
+        .AddRabbitMqAsync(builder.Configuration, ServiceType.MediaMetadata)
         .AddWorkerServices(builder.Configuration)
         .AddS3Storage(builder.Configuration)
         .AddHealthChecks();

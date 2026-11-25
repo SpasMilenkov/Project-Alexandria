@@ -49,7 +49,7 @@ public class DeletePreviewTests
             Substitute.For<ILogger<PreviewArtifactService>>(),
             new AuditContext(),
             Substitute.For<IUserSettingsService>(),
-            Substitute.For<IPublisherService>());
+            Substitute.For<IOutbox>());
     }
 
     private File OwnedFile(Guid? fileId = null, Guid? ownerId = null)

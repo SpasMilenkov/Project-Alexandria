@@ -22,7 +22,8 @@ public partial class TriggerConsumerWorker(
     MessageBrokerConnection broker,
     IServiceProvider serviceProvider,
     IOptions<RabbitMqConsumerConfig> rabbitOptions,
-    AccumulatorBuffer buffer) : BackgroundService
+    AccumulatorBuffer buffer,
+    DeliveryRetry deliveryRetry) : BackgroundService
 {
     private IChannel? _channel;
 
@@ -112,7 +113,7 @@ public partial class TriggerConsumerWorker(
                 if (staged is null)
                 {
                     LogFileUnavailable(logger, fileId);
-                    await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
+                    await DeliverySettlement.AckAsync(_channel, eventArgs.DeliveryTag, logger, stoppingToken);
                     return;
                 }
 
@@ -134,13 +135,14 @@ public partial class TriggerConsumerWorker(
                     case EnqueueResult.Duplicate:
                         LogDuplicateTrigger(logger, fileId);
                         staging.Discard(staged);
-                        await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
+                        await DeliverySettlement.AckAsync(_channel, eventArgs.DeliveryTag, logger, stoppingToken);
                         break;
 
                     case EnqueueResult.BufferFull:
                         LogBufferFull(logger, fileId);
                         staging.Discard(staged);
-                        await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: true, stoppingToken);
+                        await DeliverySettlement.NackAsync(_channel, eventArgs.DeliveryTag, requeue: true, logger,
+                            stoppingToken);
                         break;
                 }
             }
@@ -151,50 +153,28 @@ public partial class TriggerConsumerWorker(
             }
             catch (Exception ex)
             {
-                // Staging failed before any batch or Job row existed, so the
-                // monitoring dashboards have nothing to count here. Count
-                // deliveries via a header (plain requeue preserves nothing we
-                // can increment) and park poison triggers instead of looping.
-                var attempt = TriggerRetryPolicy.NextAttemptNumber(eventArgs.BasicProperties);
-                if (TriggerRetryPolicy.ShouldPark(attempt, config.TriggerMaxStagingAttempts))
-                {
-                    LogTriggerParked(logger, ex, fileId, attempt);
-                    try
-                    {
-                        await TriggerRetryPolicy.PublishWithAttemptsAsync(
-                            _channel, exchangeName, config.TriggerParkingRoutingKey,
-                            body, attempt, stoppingToken);
-                        await RecordTriggerFailureAsync(serviceProvider, ex, stoppingToken);
-                        await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
-                    }
-                    catch (Exception parkEx)
-                    {
-                        // Broker too sick to park: keep the message via requeue
-                        // rather than dropping it on the floor.
-                        LogParkFailed(logger, parkEx, fileId);
-                        await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: true, stoppingToken);
-                    }
-
-                    return;
-                }
-
+                // Staging failed before any batch or Job row existed, so the monitoring
+                // dashboards have nothing to count here. The counted redelivery parks poison
+                // triggers instead of looping; the short pause keeps a storage outage from
+                // burning every attempt in seconds.
                 LogStageError(logger, ex, fileId);
 
-                try
-                {
-                    // A short pause keeps a storage outage from burning every attempt in seconds.
-                    await Task.Delay(TimeSpan.FromSeconds(Math.Max(config.TriggerRetryDelaySeconds, 0)),
-                        stoppingToken);
-                    await TriggerRetryPolicy.PublishWithAttemptsAsync(
-                        _channel, exchangeName, eventArgs.RoutingKey,
-                        body, attempt, stoppingToken);
-                    await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
-                }
-                catch (Exception retryEx) when (retryEx is not OperationCanceledException)
-                {
-                    LogRetryPublishFailed(logger, retryEx, fileId);
-                    await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: true, stoppingToken);
-                }
+                await deliveryRetry.HandleFailureAsync(
+                    _channel,
+                    eventArgs,
+                    new DeliveryRetryOptions
+                    {
+                        MaxAttempts = config.TriggerMaxStagingAttempts,
+                        RetryDelay = TimeSpan.FromSeconds(Math.Max(config.TriggerRetryDelaySeconds, 0))
+                    },
+                    async attempt =>
+                    {
+                        LogTriggerParked(logger, ex, fileId, attempt);
+                        await deliveryRetry.RepublishAsync(
+                            eventArgs, config.TriggerParkingRoutingKey, attempt, stoppingToken);
+                        await RecordTriggerFailureAsync(serviceProvider, ex, logger, stoppingToken);
+                    },
+                    stoppingToken);
             }
         };
 
@@ -207,12 +187,22 @@ public partial class TriggerConsumerWorker(
         LogConsumerStarted(logger, queueName, exchangeName);
     }
 
+    // Runs after the trigger is already in the parking queue. Throwing here would requeue the
+    // original, and its next failure would park a second copy.
     private static async Task RecordTriggerFailureAsync(
-        IServiceProvider serviceProvider, Exception ex, CancellationToken ct)
+        IServiceProvider serviceProvider, Exception ex, ILogger logger, CancellationToken ct)
     {
-        using var scope = serviceProvider.CreateScope();
-        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-        await WorkerCycleFailureRecorder.RecordAsync(unitOfWork, ServiceType.MediaMetadata, "media-metadata", ex, ct);
+        try
+        {
+            using var scope = serviceProvider.CreateScope();
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            await WorkerCycleFailureRecorder.RecordAsync(unitOfWork, ServiceType.MediaMetadata, "media-metadata", ex,
+                ct);
+        }
+        catch (Exception recordEx) when (recordEx is not OperationCanceledException)
+        {
+            LogParkRecordFailed(logger, recordEx);
+        }
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)

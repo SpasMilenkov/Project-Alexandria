@@ -1,11 +1,11 @@
 using Alexandria.Common;
 using Alexandria.Common.Audit;
+using Alexandria.Common.Playlists;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Audit;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
-using Alexandria.Services.Storage.Playlists;
 using Microsoft.Extensions.Logging;
 using File = Alexandria.Data.Models.File;
 
@@ -14,7 +14,7 @@ namespace Alexandria.Services.Storage;
 public class FileService(
     IUnitOfWork unitOfWork,
     IDirectoryService dirService,
-    IPublisherService publisher,
+    IOutbox outbox,
     IAuditWriter auditWriter,
     ILogger<FileService> logger) : IFileService
 {
@@ -206,12 +206,13 @@ public class FileService(
             fileEntity.UpdatedBy = updatedBy;
 
             var updatedFile = await unitOfWork.Files.UpdateAsync(fileEntity, ct);
-            await unitOfWork.CommitAsync(ct);
 
-            // Bulk fans out through this method per item, so one publish point
+            // Bulk fans out through this method per item, so one enqueue point
             // covers both single and bulk edits with per-item ownership. Owner
             // comes from the entity, not the caller: single edit allows admins.
-            await PlaylistSyncNotifier.PublishFileChangedAsync(publisher, fileId, fileEntity.OwnerId, logger);
+            await outbox.EnqueueAsync(
+                PlaylistSyncMessage.SyncRoutingKey, PlaylistSyncMessage.Encode(fileId, fileEntity.OwnerId), ct);
+            await unitOfWork.CommitAsync(ct);
 
             logger.LogInformation(
                 "File metadata updated successfully: FileId={FileId}",

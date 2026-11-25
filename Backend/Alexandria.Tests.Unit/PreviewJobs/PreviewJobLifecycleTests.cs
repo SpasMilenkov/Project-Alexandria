@@ -1,3 +1,4 @@
+using System.Text;
 using Alexandria.Common;
 using Alexandria.Common.Exceptions.Preview.Images;
 using Alexandria.Common.Repositories;
@@ -50,5 +51,42 @@ public class PreviewJobLifecycleTests
         await PreviewJobLifecycle.ReleaseAsync(_unitOfWork, jobId);
 
         await _jobs.Received(1).ReleaseClaimAsync(jobId, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task fail_unclaimed_fails_the_job_only_if_it_is_still_queued()
+    {
+        var jobId = Guid.NewGuid();
+
+        await PreviewJobLifecycle.FailUnclaimedAsync(_unitOfWork, Encoding.UTF8.GetBytes(jobId.ToString()),
+            TestContext.Current.CancellationToken);
+
+        await _jobs.Received(1).FailIfQueuedAsync(jobId, PreviewJobLifecycle.UnclaimedError,
+            Arg.Any<CancellationToken>());
+        await _jobs.DidNotReceiveWithAnyArgs().UpdateStatusAsync(default, default, default, default,
+            TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task fail_unclaimed_ignores_a_body_that_is_not_a_job_id()
+    {
+        await PreviewJobLifecycle.FailUnclaimedAsync(_unitOfWork, "not-a-guid"u8.ToArray(),
+            TestContext.Current.CancellationToken);
+
+        await _jobs.DidNotReceiveWithAnyArgs().FailIfQueuedAsync(default, default!,
+            TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task fail_unclaimed_lets_a_database_failure_through_so_the_message_is_kept()
+    {
+        var jobId = Guid.NewGuid();
+        _jobs.FailIfQueuedAsync(jobId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(new InvalidOperationException("database down")));
+
+        var act = () => PreviewJobLifecycle.FailUnclaimedAsync(_unitOfWork, Encoding.UTF8.GetBytes(jobId.ToString()),
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
     }
 }

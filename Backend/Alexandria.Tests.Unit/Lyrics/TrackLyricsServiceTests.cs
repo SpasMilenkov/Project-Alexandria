@@ -1,5 +1,4 @@
 using System.Linq.Expressions;
-using System.Text;
 using Alexandria.Common;
 using Alexandria.Common.Audit;
 using Alexandria.Common.Config;
@@ -26,7 +25,7 @@ public class TrackLyricsServiceTests
     private readonly IJobRepository _jobsRepo = Substitute.For<IJobRepository>();
     private readonly ITranspilationJobRepository _transcodes = Substitute.For<ITranspilationJobRepository>();
     private readonly IUnitOfWork _uow = Substitute.For<IUnitOfWork>();
-    private readonly IPublisherService _publisher = Substitute.For<IPublisherService>();
+    private readonly IOutbox _outbox = Substitute.For<IOutbox>();
     private readonly IMessageBrokerStatus _broker = Substitute.For<IMessageBrokerStatus>();
     private readonly IAuditWriter _audit = Substitute.For<IAuditWriter>();
     private readonly Guid _fileId = Guid.NewGuid();
@@ -48,7 +47,7 @@ public class TrackLyricsServiceTests
         _broker.IsAvailable.Returns(true);
         _transcodes.GetTrackFileAsync(_jobId, Arg.Any<CancellationToken>())
             .Returns(new TrackFileRef(Guid.NewGuid(), _fileId, "song.flac"));
-        _sut = new TrackLyricsService(_uow, _publisher, _broker, _audit, Options.Create(_capabilities));
+        _sut = new TrackLyricsService(_uow, _outbox, _broker, _audit, Options.Create(_capabilities));
     }
 
     [Theory]
@@ -70,7 +69,7 @@ public class TrackLyricsServiceTests
 
         await _jobsRepo.DidNotReceive().AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
         _lyricsRepo.DidNotReceive().Update(Arg.Any<TrackLyrics>());
-        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, default, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -83,7 +82,7 @@ public class TrackLyricsServiceTests
         var result = await _sut.GetLyricsForMediaAsync(_jobId, _userId, TestContext.Current.CancellationToken);
 
         result.PlayLyrics.Should().Be("User lyrics");
-        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, default, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -95,7 +94,7 @@ public class TrackLyricsServiceTests
 
         await _lyricsRepo.Received(1).AddAsync(Arg.Is<TrackLyrics>(l => l.SourceProvider == LyricsProvider.Manual),
             TestContext.Current.CancellationToken);
-        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, default, TestContext.Current.CancellationToken);
     }
 
     // ---- GetLyricsForMediaAsync ----
@@ -140,35 +139,39 @@ public class TrackLyricsServiceTests
         result.Status.Should().Be(LyricsStatus.PendingFetch);
         created.Should().NotBeNull();
         created!.Type.Should().Be(JobType.LyricsFetch);
-        await _publisher.Received(1).PublishAsync(
-            Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == created.Id.ToString()),
-            "lyrics.job");
+        await _outbox.Received(1).EnqueueJobAsync("lyrics.job", created.Id, Arg.Any<CancellationToken>());
     }
 
     // ---- QueueLyricsRefetchAsync ----
 
     [Fact]
-    public async Task get_lyrics_not_found_broker_unavailable_returns_pending_without_queueing()
+    public async Task get_lyrics_not_found_broker_disabled_returns_pending_without_queueing()
     {
+        _broker.IsEnabled.Returns(false);
         _broker.IsAvailable.Returns(false);
 
         var result = await _sut.GetLyricsForMediaAsync(_jobId, _userId, TestContext.Current.CancellationToken);
 
         result.Status.Should().Be(LyricsStatus.PendingFetch);
         await _jobsRepo.DidNotReceive().AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
-        await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, default, TestContext.Current.CancellationToken);
     }
 
     [Fact]
-    public async Task queue_refetch_broker_unavailable_throws_before_any_write()
+    public async Task queue_refetch_broker_outage_still_queues_through_the_outbox()
     {
         _broker.IsAvailable.Returns(false);
+        _lyricsRepo.FirstOrDefaultAsync(
+                Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns((TrackLyrics?)null);
+        _lyricsRepo.AddAsync(Arg.Any<TrackLyrics>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => callInfo.Arg<TrackLyrics>());
 
-        var act = () => _sut.QueueLyricsRefetchAsync(_jobId, _userId, TestContext.Current.CancellationToken);
+        await _sut.QueueLyricsRefetchAsync(_jobId, _userId, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<MessageBrokerUnavailableException>();
-        await _uow.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
-        await _jobsRepo.DidNotReceive().AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
+        await _jobsRepo.Received(1).AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
+        await _outbox.Received(1).EnqueueJobAsync("lyrics.job", Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _uow.Received(1).CommitAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -202,6 +205,7 @@ public class TrackLyricsServiceTests
         _lyricsRepo.FirstOrDefaultAsync(
                 Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
             .Returns(record);
+        _jobsRepo.TryRequeueFinishedAsync(linkedJobId, Arg.Any<CancellationToken>()).Returns(true);
 
         await _sut.QueueLyricsRefetchAsync(_jobId, _userId);
 
@@ -209,13 +213,33 @@ public class TrackLyricsServiceTests
         record.FetchedAt.Should().BeNull();
         _lyricsRepo.Received(1).Update(record);
         await _uow.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
-        await _jobsRepo.Received(1).UpdateStatusAsync(
-            linkedJobId, JobStatus.Queued, Arg.Any<int?>(), Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
-        await _jobsRepo.Received(1).ClearErrorAsync(linkedJobId, Arg.Any<CancellationToken>());
-        await _publisher.Received(1).PublishAsync(
-            Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == linkedJobId.ToString()),
-            "lyrics.job");
+        await _jobsRepo.Received(1).TryRequeueFinishedAsync(linkedJobId, Arg.Any<CancellationToken>());
+        await _outbox.Received(1).EnqueueJobAsync("lyrics.job", linkedJobId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task queue_refetch_while_the_fetch_is_queued_or_running_changes_nothing()
+    {
+        var linkedJobId = Guid.NewGuid();
+        var record = new TrackLyrics
+        {
+            Id = Guid.NewGuid(),
+            TranspilationJobId = _jobId,
+            SourceProvider = LyricsProvider.LrclibPublic,
+            Status = LyricsStatus.PendingFetch,
+            JobId = linkedJobId
+        };
+        _lyricsRepo.FirstOrDefaultAsync(
+                Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(record);
+        _jobsRepo.TryRequeueFinishedAsync(linkedJobId, Arg.Any<CancellationToken>()).Returns(false);
+
+        await _sut.QueueLyricsRefetchAsync(_jobId, _userId, TestContext.Current.CancellationToken);
+
+        _lyricsRepo.DidNotReceiveWithAnyArgs().Update(default!);
+        await _uow.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        _audit.DidNotReceiveWithAnyArgs().Record(default!);
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, Guid.Empty, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -267,9 +291,7 @@ public class TrackLyricsServiceTests
             Arg.Is<TrackLyrics>(l => l.JobId == created.Id),
             Arg.Any<CancellationToken>());
         await _uow.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
-        await _publisher.Received(1).PublishAsync(
-            Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == created.Id.ToString()),
-            "lyrics.job");
+        await _outbox.Received(1).EnqueueJobAsync("lyrics.job", created.Id, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -287,8 +309,7 @@ public class TrackLyricsServiceTests
         await act.Should().ThrowAsync<LyricsNotFoundException>();
         await _lyricsRepo.DidNotReceive().AddAsync(
             Arg.Any<TrackLyrics>(), Arg.Any<CancellationToken>());
-        await _publisher.DidNotReceive().PublishAsync(
-            Arg.Any<byte[]>(), Arg.Any<string>());
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, default, TestContext.Current.CancellationToken);
     }
 
     // ---- RemoveLyricsAsync ----
@@ -434,6 +455,7 @@ public class TrackLyricsServiceTests
         _lyricsRepo.FirstOrDefaultAsync(
                 Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
             .Returns(record);
+        _jobsRepo.TryRequeueFinishedAsync(linkedJobId, Arg.Any<CancellationToken>()).Returns(true);
 
         await _sut.ChangeProviderAsync(lyricsId, _userId, LyricsProvider.Musicxmatch);
 
@@ -446,13 +468,37 @@ public class TrackLyricsServiceTests
         record.FetchedAt.Should().BeNull();
         record.Cached.Should().BeFalse();
         _lyricsRepo.Received(1).Update(record);
-        await _jobsRepo.Received(1).UpdateStatusAsync(
-            linkedJobId, JobStatus.Queued, Arg.Any<int?>(), Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
+        await _jobsRepo.Received(1).TryRequeueFinishedAsync(linkedJobId, Arg.Any<CancellationToken>());
         await _uow.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
-        await _publisher.Received(1).PublishAsync(
-            Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == linkedJobId.ToString()),
-            "lyrics.change");
+        await _outbox.Received(1).EnqueueJobAsync("lyrics.change", linkedJobId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task change_provider_while_the_fetch_is_running_throws_and_leaves_the_lyrics_alone()
+    {
+        var linkedJobId = Guid.NewGuid();
+        var record = new TrackLyrics
+        {
+            Id = Guid.NewGuid(),
+            TranspilationJob = new TranspilationJob { UserId = _userId },
+            SourceProvider = LyricsProvider.LrclibPublic,
+            Status = LyricsStatus.PendingFetch,
+            JobId = linkedJobId
+        };
+        _lyricsRepo.FirstOrDefaultAsync(
+                Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(record);
+        _jobsRepo.TryRequeueFinishedAsync(linkedJobId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var act = () => _sut.ChangeProviderAsync(record.Id, _userId, LyricsProvider.Musicxmatch,
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<LyricsFetchInProgressException>();
+        record.SourceProvider.Should().Be(LyricsProvider.LrclibPublic);
+        _lyricsRepo.DidNotReceiveWithAnyArgs().Update(default!);
+        await _uow.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _uow.Received(1).RollbackAsync(Arg.Any<CancellationToken>());
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, Guid.Empty, TestContext.Current.CancellationToken);
     }
 
     [Fact]

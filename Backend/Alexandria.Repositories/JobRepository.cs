@@ -188,7 +188,7 @@ public class JobRepository(AlexandriaDbContext context) : IJobRepository
                         && j.DeletedAt == null
                         && (j.Status == JobStatus.Failed
                             || j.Status == JobStatus.Cancelled
-                            || (j.Status == JobStatus.Processing
+                            || ((j.Status == JobStatus.Processing || j.Status == JobStatus.Queued)
                                 && (j.UpdatedAt ?? j.StartedAt ?? j.CreatedAt) < stalledBefore)))
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(j => j.Status, JobStatus.Queued)
@@ -199,6 +199,26 @@ public class JobRepository(AlexandriaDbContext context) : IJobRepository
                 .SetProperty(j => j.UpdatedAt, DateTime.UtcNow), ct);
 
         return reset > 0;
+    }
+
+    public async Task<bool> TryRequeueFinishedAsync(Guid jobId, CancellationToken ct = default)
+    {
+        var requeued = await _jobs
+            .Where(j => j.Id == jobId
+                        && j.DeletedAt == null
+                        && (j.Status == JobStatus.Ready
+                            || j.Status == JobStatus.Partial
+                            || j.Status == JobStatus.Failed
+                            || j.Status == JobStatus.Cancelled))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(j => j.Status, JobStatus.Queued)
+                .SetProperty(j => j.RetryCount, 0)
+                .SetProperty(j => j.ErrorDetail, (string?)null)
+                .SetProperty(j => j.ProgressPercent, 0)
+                .SetProperty(j => j.CompletedAt, (DateTime?)null)
+                .SetProperty(j => j.UpdatedAt, DateTime.UtcNow), ct);
+
+        return requeued > 0;
     }
 
     public async Task MarkNonRetryableAsync(Guid jobId, CancellationToken ct = default)
@@ -221,22 +241,19 @@ public class JobRepository(AlexandriaDbContext context) : IJobRepository
             .Take(limit)
             .ToListAsync(ct);
 
-    public async Task<IReadOnlyList<Job>> GetOrphanedQueuedJobsAsync(
-        IReadOnlyCollection<JobType> types, DateTime queuedBefore, int limit, CancellationToken ct = default)
-        => await _jobs
-            .AsNoTracking()
-            .Where(j => j.DeletedAt == null
-                        && types.Contains(j.Type)
-                        && j.Status == JobStatus.Queued
-                        && (j.UpdatedAt ?? j.CreatedAt) < queuedBefore)
-            .OrderBy(j => j.UpdatedAt ?? j.CreatedAt)
-            .Take(limit)
-            .ToListAsync(ct);
+    public async Task<bool> FailIfQueuedAsync(Guid jobId, string errorDetail, CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+        var failed = await _jobs
+            .Where(j => j.Id == jobId && j.Status == JobStatus.Queued)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(j => j.Status, JobStatus.Failed)
+                .SetProperty(j => j.ErrorDetail, errorDetail)
+                .SetProperty(j => j.CompletedAt, now)
+                .SetProperty(j => j.UpdatedAt, now), ct);
 
-    public async Task TouchAsync(Guid jobId, CancellationToken ct = default)
-        => await _jobs
-            .Where(j => j.Id == jobId)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(j => j.UpdatedAt, DateTime.UtcNow), ct);
+        return failed > 0;
+    }
 
     public async Task<IReadOnlyList<JobStatusCount>> GetStatusCountsAsync(
         JobType? type = null, CancellationToken ct = default)

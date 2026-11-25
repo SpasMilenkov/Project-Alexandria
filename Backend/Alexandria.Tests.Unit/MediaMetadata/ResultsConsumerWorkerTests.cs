@@ -1,6 +1,7 @@
 using Alexandria.Common;
 using Alexandria.Common.Config;
 using Alexandria.Common.Repositories;
+using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Infrastructure.Messaging;
@@ -12,6 +13,7 @@ using Alexandria.Workers.MediaMetadata.Workers;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using IoDirectory = System.IO.Directory;
@@ -58,7 +60,8 @@ public class ResultsConsumerWorkerTests : IDisposable
             Options.Create(new RabbitMqConsumerConfig()),
             essentiaOptions,
             Options.Create(new ProcessingCapabilities()),
-            Substitute.For<IAutoTagQueue>());
+            Substitute.For<IAutoTagQueue>(),
+            new DeliveryRetry(Substitute.For<IPublisherService>(), NullLogger<DeliveryRetry>.Instance));
     }
 
     public void Dispose()

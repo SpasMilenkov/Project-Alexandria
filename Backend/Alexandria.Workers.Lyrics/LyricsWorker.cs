@@ -17,17 +17,20 @@ public partial class LyricsWorker : BackgroundService
     private readonly MessageBrokerConnection _broker;
     private readonly IConfiguration _configuration;
     private readonly IServiceProvider _serviceProvider;
+    private readonly DeliveryRetry _deliveryRetry;
 
     public LyricsWorker(
         ILogger<LyricsWorker> logger,
         MessageBrokerConnection broker,
         IConfiguration configuration,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        DeliveryRetry deliveryRetry)
     {
         _logger = logger;
         _broker = broker;
         _configuration = configuration;
         _serviceProvider = serviceProvider;
+        _deliveryRetry = deliveryRetry;
 
         var concurrency = configuration.GetValue("RabbitMQ:Consumer:Concurrency", 2);
         _concurrencyGate = new SemaphoreSlim(concurrency, concurrency);
@@ -117,8 +120,8 @@ public partial class LyricsWorker : BackgroundService
                     // Garbage in: can never succeed, park immediately.
                     LogMalformedParked(_logger, payload);
                     var malformed = new FormatException($"Malformed lyrics trigger: '{payload}'");
-                    await ParkDeliveryAsync(eventArgs, body, maxAttempts, malformed,
-                        parkingRoutingKey, exchangeName, ct);
+                    await _deliveryRetry.ParkNowAsync(_channel, eventArgs,
+                        attempt => ParkAsync(eventArgs, attempt, malformed, parkingRoutingKey, ct), ct);
                     return;
                 }
 
@@ -127,7 +130,7 @@ public partial class LyricsWorker : BackgroundService
 
                 await handler.HandleAsync(jobId, ct);
 
-                await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, ct);
+                await DeliverySettlement.AckAsync(_channel, eventArgs.DeliveryTag, _logger, ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -138,7 +141,7 @@ public partial class LyricsWorker : BackgroundService
             {
                 LogConsumerError(_logger, ex);
                 await HandleDeliveryFailureAsync(eventArgs, ex, maxAttempts, retryDelaySeconds,
-                    parkingRoutingKey, exchangeName, ct);
+                    parkingRoutingKey, ct);
             }
             finally
             {
@@ -153,56 +156,58 @@ public partial class LyricsWorker : BackgroundService
             cancellationToken: ct);
     }
 
-    private async Task HandleDeliveryFailureAsync(
+    // Bounded breather so a persistent outage doesn't spin at full speed; the counted redelivery
+    // preserves the attempt history, and poison deliveries end up parked.
+    private Task HandleDeliveryFailureAsync(
         BasicDeliverEventArgs eventArgs,
         Exception ex,
         int maxAttempts,
         int retryDelaySeconds,
         string parkingRoutingKey,
-        string exchangeName,
         CancellationToken ct)
-    {
-        var body = eventArgs.Body.ToArray();
-        var attempt = LyricsRetryPolicy.NextAttemptNumber(eventArgs.BasicProperties);
+        => _deliveryRetry.HandleFailureAsync(
+            _channel!,
+            eventArgs,
+            new DeliveryRetryOptions
+            {
+                MaxAttempts = maxAttempts,
+                RetryDelay = TimeSpan.FromSeconds(Math.Max(retryDelaySeconds, 0))
+            },
+            attempt =>
+            {
+                LogTriggerParked(_logger, ex, attempt);
+                return ParkAsync(eventArgs, attempt, ex, parkingRoutingKey, ct);
+            },
+            ct);
 
-        if (LyricsRetryPolicy.ShouldPark(attempt, maxAttempts))
-        {
-            LogTriggerParked(_logger, ex, attempt);
-            await ParkDeliveryAsync(eventArgs, body, attempt, ex, parkingRoutingKey, exchangeName, ct);
-            return;
-        }
-
-        // Bounded breather so a persistent outage doesn't spin at full speed;
-        // the counted redelivery preserves the attempt history.
-        await Task.Delay(TimeSpan.FromSeconds(retryDelaySeconds), ct);
-        await LyricsRetryPolicy.PublishWithAttemptsAsync(
-            _channel!, exchangeName, eventArgs.RoutingKey, body, attempt, ct);
-        await _channel!.BasicAckAsync(eventArgs.DeliveryTag, false, ct);
-    }
-
-    // Parks the delivery and records the failure. If parking itself fails,
-    // falls back to requeueing the original so the message is never dropped.
-    private async Task ParkDeliveryAsync(
+    // A failed parking publish throws, so the original is requeued and never dropped. Once the
+    // copy is parked, the database steps must not throw: a requeued original would be parked a
+    // second time on its next failure.
+    private async Task ParkAsync(
         BasicDeliverEventArgs eventArgs,
-        byte[] body,
         int attempt,
         Exception ex,
         string parkingRoutingKey,
-        string exchangeName,
         CancellationToken ct)
     {
+        await _deliveryRetry.RepublishAsync(eventArgs, parkingRoutingKey, attempt, ct);
+
         try
         {
-            await LyricsRetryPolicy.PublishWithAttemptsAsync(
-                _channel!, exchangeName, parkingRoutingKey, body, attempt, ct);
             await RecordFailureAsync(ex, ct);
-            await MarkParkedJobFailedAsync(body, ct);
-            await _channel!.BasicAckAsync(eventArgs.DeliveryTag, false, ct);
         }
-        catch (Exception parkEx)
+        catch (Exception recordEx) when (recordEx is not OperationCanceledException)
         {
-            LogParkFailed(_logger, parkEx);
-            await _channel!.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: true, ct);
+            LogParkRecordFailed(_logger, recordEx);
+        }
+
+        try
+        {
+            await MarkParkedJobFailedAsync(eventArgs.Body.ToArray(), ct);
+        }
+        catch (Exception markEx) when (markEx is not OperationCanceledException)
+        {
+            LogParkedJobNotMarked(_logger, markEx);
         }
     }
 

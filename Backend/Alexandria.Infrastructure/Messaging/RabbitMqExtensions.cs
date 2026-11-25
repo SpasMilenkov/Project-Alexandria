@@ -1,4 +1,7 @@
 using Alexandria.Common.Services;
+using Alexandria.Common.Settings;
+using Alexandria.Data.Models.Enumerators.Monitoring;
+using Alexandria.Infrastructure.Messaging.Outbox;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -25,10 +28,16 @@ public static class RabbitMqExtensions
         return services;
     }
 
-    /// <summary>Registers the publisher stack on top of <see cref="AddRabbitMqConnection"/>.</summary>
+    /// <summary>
+    /// Registers the publisher stack on top of <see cref="AddRabbitMqConnection"/>: the outbox
+    /// writer application code enqueues through, and the relay that sends committed messages.
+    /// Every host that publishes runs its own relay, and <paramref name="host"/> names it in
+    /// the incidents that relay raises.
+    /// </summary>
     public static IServiceCollection AddRabbitMqAsync(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ServiceType host)
     {
         services.AddRabbitMqConnection(configuration);
 
@@ -40,6 +49,16 @@ public static class RabbitMqExtensions
             ));
 
         services.TryAddSingleton<IPublisherService, PublisherService>();
+        services.TryAddSingleton<DeliveryRetry>();
+
+        services.Configure<OutboxOptions>(configuration.GetSection("Outbox"));
+        services.TryAddSingleton(new OutboxHost { Service = host });
+        services.TryAddSingleton<OutboxSignal>();
+        services.TryAddSingleton<IOutboxSignal>(sp => sp.GetRequiredService<OutboxSignal>());
+        services.TryAddScoped<IOutbox, OutboxWriter>();
+        services.TryAddScoped<OutboxDispatcher>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, OutboxRelay>());
+
         return services;
     }
 

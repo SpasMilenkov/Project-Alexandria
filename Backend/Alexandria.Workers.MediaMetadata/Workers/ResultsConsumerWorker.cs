@@ -31,7 +31,8 @@ public partial class ResultsConsumerWorker(
     IOptions<RabbitMqConsumerConfig> rabbitOptions,
     IOptions<EssentiaConfig> essentiaOptions,
     IOptions<ProcessingCapabilities> capabilities,
-    IAutoTagQueue autoTagQueue) : BackgroundService
+    IAutoTagQueue autoTagQueue,
+    DeliveryRetry deliveryRetry) : BackgroundService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -95,13 +96,13 @@ public partial class ResultsConsumerWorker(
                 }
 
                 await HandleCompletionAsync(completion, stoppingToken);
-                await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
+                await DeliverySettlement.AckAsync(_channel, eventArgs.DeliveryTag, logger, stoppingToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 LogProcessError(logger, ex);
-                await ConsumerRetry.HandleFailureAsync(_channel, eventArgs, exchangeName, ex, serviceProvider,
-                    stoppingToken);
+                await ConsumerRetry.HandleFailureAsync(deliveryRetry, _channel, eventArgs, ex, serviceProvider,
+                    logger, stoppingToken);
             }
         };
 

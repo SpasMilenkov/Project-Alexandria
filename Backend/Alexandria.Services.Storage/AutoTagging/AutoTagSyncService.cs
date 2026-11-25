@@ -1,8 +1,8 @@
 using Alexandria.Common;
 using Alexandria.Common.Helpers;
+using Alexandria.Common.Playlists;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
-using Alexandria.Services.Storage.Playlists;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -22,7 +22,7 @@ public partial class AutoTagSyncService(
     IUserSettingsService userSettingsService,
     IAutoTagDerivationService derivationService,
     IFileTagService fileTagService,
-    IPublisherService publisher,
+    IOutbox outbox,
     ILogger<AutoTagSyncService> logger) : IAutoTagSyncService
 {
     public async Task SyncFileAsync(Guid fileId, CancellationToken ct = default)
@@ -58,17 +58,23 @@ public partial class AutoTagSyncService(
         }
 
         var behavior = await userSettingsService.GetBehaviorAsync(file.OwnerId, ct);
-        await fileTagService.ApplyAutoTagsAsync(fileId, candidates, behavior.AllowAutoTagRegression, ct);
 
-        await PlaylistSyncNotifier.PublishFileChangedAsync(publisher, fileId, file.OwnerId, logger);
+        // The tag write opens its own transaction, which nests inside this one, so the tags and
+        // the playlist notice commit together.
+        await unitOfWork.InTransactionAsync(async () =>
+        {
+            await fileTagService.ApplyAutoTagsAsync(fileId, candidates, behavior.AllowAutoTagRegression, ct);
+            await outbox.EnqueueAsync(
+                PlaylistSyncMessage.SyncRoutingKey, PlaylistSyncMessage.Encode(fileId, file.OwnerId), ct);
+        }, ct);
 
         LogAutoTagsSynced(logger, fileId, candidates.Count, file.OwnerId);
     }
 
     /// <summary>
     /// Picks the authoritative enrichment row per facet. For genre, the first backbone in
-    /// <see cref="AutoTaggingOptions.ModelPriority"/> that has a non-failure row; for mood,
-    /// the single <c>essentia-mood</c> row (mood rows carry no backbone). Failure rows
+    /// <see cref="AutoTaggingOptions.ModelPriority"/> that has a successful row; for mood, the
+    /// <c>essentia-mood</c> row (mood rows carry no backbone). Failure rows
     /// (<c>{"success":false,...}</c>) never count as authoritative.
     /// </summary>
     private static IReadOnlyList<FileEnrichment> SelectWinners(
@@ -79,21 +85,27 @@ public partial class AutoTagSyncService(
 
         foreach (var backbone in modelPriority)
         {
-            var analyzer = $"essentia-genre-{backbone.ToLowerInvariant()}";
-            var row = rows.FirstOrDefault(r =>
-                r.Analyzer.Equals(analyzer, StringComparison.OrdinalIgnoreCase));
-            if (row is not null && !EnrichmentPayload.IsFailure(row.PayloadJson))
+            var row = NewestSuccess(rows, $"essentia-genre-{backbone.ToLowerInvariant()}");
+            if (row is not null)
             {
                 winners.Add(row);
                 break;
             }
         }
 
-        var mood = rows.FirstOrDefault(r =>
-            r.Analyzer.Equals("essentia-mood", StringComparison.OrdinalIgnoreCase));
-        if (mood is not null && !EnrichmentPayload.IsFailure(mood.PayloadJson))
+        var mood = NewestSuccess(rows, "essentia-mood");
+        if (mood is not null)
             winners.Add(mood);
 
         return winners;
     }
+
+    // Rows are kept per model version, so one analyzer can hold a timeout failure filed under
+    // "unknown" next to a real result. Only successful rows compete, the newest winning.
+    private static FileEnrichment? NewestSuccess(IReadOnlyCollection<FileEnrichment> rows, string analyzer)
+        => rows
+            .Where(r => r.Analyzer.Equals(analyzer, StringComparison.OrdinalIgnoreCase)
+                        && !EnrichmentPayload.IsFailure(r.PayloadJson))
+            .OrderByDescending(r => r.UpdatedAt ?? r.CreatedAt)
+            .FirstOrDefault();
 }

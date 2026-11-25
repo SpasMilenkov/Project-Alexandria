@@ -237,7 +237,7 @@ public class FileTagServiceApplyAutoTagsTests
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var fileRepo = Substitute.For<IFileRepository>();
         unitOfWork.Files.Returns(fileRepo);
-        var service = new FileTagService(unitOfWork, Substitute.For<IPublisherService>(),
+        var service = new FileTagService(unitOfWork, Substitute.For<IOutbox>(),
             NullLogger<FileTagService>.Instance);
 
         var act = async () => await service.ApplyAutoTagsAsync(Guid.NewGuid(),
@@ -254,7 +254,7 @@ public class FileTagServiceApplyAutoTagsTests
         fileRepo.GetFileEntityWithTagsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(file);
 
-        return new FileTagService(unitOfWork, Substitute.For<IPublisherService>(), NullLogger<FileTagService>.Instance);
+        return new FileTagService(unitOfWork, Substitute.For<IOutbox>(), NullLogger<FileTagService>.Instance);
     }
 
     private static File CreateFile(

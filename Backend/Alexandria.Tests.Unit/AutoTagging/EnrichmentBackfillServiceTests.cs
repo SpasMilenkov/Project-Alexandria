@@ -28,7 +28,7 @@ public class EnrichmentBackfillServiceTests
     private static readonly DateTime RuleUpdatedAt = RuleCreatedAt.AddHours(2);
 
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
-    private readonly IPublisherService _publisher = Substitute.For<IPublisherService>();
+    private readonly IOutbox _outbox = Substitute.For<IOutbox>();
     private readonly IDirectoryPolicyRepository _policies = Substitute.For<IDirectoryPolicyRepository>();
     private readonly IDirectoryRepository _directories = Substitute.For<IDirectoryRepository>();
     private readonly IEssentiaBatchFileRepository _batchFiles = Substitute.For<IEssentiaBatchFileRepository>();
@@ -45,7 +45,7 @@ public class EnrichmentBackfillServiceTests
     private EnrichmentBackfillService CreateSut(bool enabled = true, bool audioAnalysis = true)
     {
         return new EnrichmentBackfillService(
-            _unitOfWork, _publisher,
+            _unitOfWork, _outbox,
             Substitute.For<ILogger<EnrichmentBackfillService>>(),
             Options.Create(new ProcessingCapabilities { Autotagging = enabled, AudioAnalysis = audioAnalysis }));
     }
@@ -86,7 +86,7 @@ public class EnrichmentBackfillServiceTests
             TestContext.Current.CancellationToken);
 
         result.Should().Be(new EnrichmentBackfillResult(0, 0, 0));
-        await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueAsync(default!, default!, TestContext.Current.CancellationToken);
     }
 
     [Theory]
@@ -111,7 +111,7 @@ public class EnrichmentBackfillServiceTests
         result.Should().Be(new EnrichmentBackfillResult(0, 0, 0));
         await _batchFiles.DidNotReceive().GetEnrichmentBackfillCandidatesAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
-        await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueAsync(default!, default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public class EnrichmentBackfillServiceTests
             TestContext.Current.CancellationToken);
 
         result.Should().Be(new EnrichmentBackfillResult(0, 0, 0));
-        await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueAsync(default!, default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -136,7 +136,7 @@ public class EnrichmentBackfillServiceTests
 
         result.Should().Be(new EnrichmentBackfillResult(0, 0, 0));
         await _batchFiles.DidNotReceiveWithAnyArgs().GetEnrichmentBackfillCandidatesAsync(default!, default, default);
-        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueAsync(default!, default!, TestContext.Current.CancellationToken);
     }
 
     [Theory]
@@ -191,8 +191,8 @@ public class EnrichmentBackfillServiceTests
         result.Published.Should().Be(expectedPublished);
         await _batchFiles.Received(1).GetEnrichmentBackfillCandidatesAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), cutoff, Arg.Any<CancellationToken>());
-        var publishedIds = _publisher.ReceivedCalls()
-            .Select(call => Guid.Parse(Encoding.UTF8.GetString((byte[])call.GetArguments()[0]!))).ToList();
+        var publishedIds = _outbox.ReceivedCalls()
+            .Select(call => Guid.Parse(Encoding.UTF8.GetString((byte[])call.GetArguments()[1]!))).ToList();
 
         var expectedIds = new List<Guid>();
 

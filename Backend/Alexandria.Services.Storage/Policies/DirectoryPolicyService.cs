@@ -17,7 +17,7 @@ namespace Alexandria.Services.Storage.Policies;
 public sealed partial class DirectoryPolicyService(
     IUnitOfWork unitOfWork,
     IDirectoryService directoryService,
-    IPublisherService publisher,
+    IOutbox outbox,
     ILogger<DirectoryPolicyService> logger,
     IOptions<ProcessingCapabilities> capabilities)
     : IDirectoryPolicyService
@@ -76,15 +76,19 @@ public sealed partial class DirectoryPolicyService(
         policy.InheritedByChildren = inheritedByChildren;
         policy.UpdatedBy = updatedBy;
 
-        unitOfWork.DirectoryPolicies.Update(policy);
-        await unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.InTransactionAsync(async () =>
+        {
+            unitOfWork.DirectoryPolicies.Update(policy);
+            await unitOfWork.SaveChangesAsync(ct);
+
+            var cutoff = new DateTimeOffset(policy.UpdatedAt ?? DateTime.UtcNow);
+
+            foreach (var rule in policy.Rules.Where(r =>
+                         r.DeletedAt == null && r.ActionType == PolicyActionType.AutoTag))
+                await EnqueueBackfillAsync(new EnrichmentBackfillRequest(policyId, rule.Id, cutoff), ct);
+        }, ct);
 
         LogPolicyUpdated(logger, policyId);
-
-        var cutoff = new DateTimeOffset(policy.UpdatedAt ?? DateTime.UtcNow);
-
-        foreach (var rule in policy.Rules.Where(r => r.DeletedAt == null && r.ActionType == PolicyActionType.AutoTag))
-            await EnqueueBackfillAsync(new EnrichmentBackfillRequest(policyId, rule.Id, cutoff));
 
         return DirectoryPolicyDto.FromEntity(policy);
     }
@@ -126,14 +130,17 @@ public sealed partial class DirectoryPolicyService(
 
         var entity = request.ToEntity(policyId, updatedBy);
 
-        await unitOfWork.PolicyRules.AddAsync(entity, ct);
-        await unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.InTransactionAsync(async () =>
+        {
+            await unitOfWork.PolicyRules.AddAsync(entity, ct);
+            await unitOfWork.SaveChangesAsync(ct);
+
+            if (entity.ActionType == PolicyActionType.AutoTag)
+                await EnqueueBackfillAsync(new EnrichmentBackfillRequest(
+                    policyId, entity.Id, new DateTimeOffset(entity.CreatedAt)), ct);
+        }, ct);
 
         LogRuleAdded(logger, entity.Id, policyId);
-
-        if (entity.ActionType == PolicyActionType.AutoTag)
-            await EnqueueBackfillAsync(new EnrichmentBackfillRequest(
-                policyId, entity.Id, new DateTimeOffset(entity.CreatedAt)));
 
         return PolicyRuleDto.FromEntity(entity);
     }
@@ -154,14 +161,17 @@ public sealed partial class DirectoryPolicyService(
         rule.Parameters = request.Parameters;
         rule.UpdatedBy = updatedBy;
 
-        unitOfWork.PolicyRules.Update(rule);
-        await unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.InTransactionAsync(async () =>
+        {
+            unitOfWork.PolicyRules.Update(rule);
+            await unitOfWork.SaveChangesAsync(ct);
+
+            if (rule.ActionType == PolicyActionType.AutoTag)
+                await EnqueueBackfillAsync(new EnrichmentBackfillRequest(
+                    rule.PolicyId, rule.Id, new DateTimeOffset(rule.UpdatedAt ?? DateTime.UtcNow)), ct);
+        }, ct);
 
         LogRuleUpdated(logger, ruleId);
-
-        if (rule.ActionType == PolicyActionType.AutoTag)
-            await EnqueueBackfillAsync(new EnrichmentBackfillRequest(
-                rule.PolicyId, rule.Id, new DateTimeOffset(rule.UpdatedAt ?? DateTime.UtcNow)));
 
         return PolicyRuleDto.FromEntity(rule);
     }
@@ -178,9 +188,10 @@ public sealed partial class DirectoryPolicyService(
     }
 
     /// <summary>
-    /// Backfill is best-effort: a broker failure must not fail a saved rule or policy edit.
+    /// Enqueued in the same transaction as the rule or policy edit, so a saved edit always gets
+    /// its backfill and a broker outage only delays it.
     /// </summary>
-    private async Task EnqueueBackfillAsync(EnrichmentBackfillRequest request)
+    private async Task EnqueueBackfillAsync(EnrichmentBackfillRequest request, CancellationToken ct)
     {
         if (!_autoTaggingEnabled)
         {
@@ -188,19 +199,9 @@ public sealed partial class DirectoryPolicyService(
             return;
         }
 
-        try
-        {
-            await publisher.PublishAsync(
-                JsonSerializer.SerializeToUtf8Bytes(request, BackfillJsonOptions),
-                EnrichmentBackfill.BackfillRoutingKey);
-        }
-        catch (MessageBrokerUnavailableException ex)
-        {
-            LogBackfillSkippedBrokerUnavailable(logger, request.PolicyId, ex.Message);
-        }
-        catch (Exception ex)
-        {
-            LogBackfillEnqueueFailed(logger, ex, request.PolicyId);
-        }
+        await outbox.EnqueueAsync(
+            EnrichmentBackfill.BackfillRoutingKey,
+            JsonSerializer.SerializeToUtf8Bytes(request, BackfillJsonOptions),
+            ct);
     }
 }

@@ -20,13 +20,14 @@ public class AutoTagFileResponse
 
 /// <summary>
 /// Manual trigger for a single file's auto-tag run. Refuses with a 400 when the feature flag
-/// is off or the file is not audio, skips files that were already enriched successfully, and
-/// otherwise publishes a <c>media-metadata.enrich</c> trigger (same path as the AutoTag policy
-/// rule). The file id comes from the route — no request body is expected (bodyless POST, like
-/// <c>/auth/logout</c>).
+/// is off or the file is not audio, skips files that were already enriched successfully or are
+/// being analysed, and otherwise enqueues a <c>media-metadata.enrich</c> trigger (same path as
+/// the AutoTag policy rule). The file id comes from the route, so no request body is expected
+/// (bodyless POST, like <c>/auth/logout</c>).
 /// </summary>
 public class AutoTagFileEndpoint(
-    IPublisherService publisher,
+    IOutbox outbox,
+    IMessageBrokerStatus brokerStatus,
     IUnitOfWork unitOfWork,
     IOptions<ProcessingCapabilities> capabilities) : EndpointWithoutRequest<AutoTagFileResponse>
 {
@@ -73,8 +74,11 @@ public class AutoTagFileEndpoint(
 
         try
         {
+            // Without a broker the trigger would be dropped, so refuse instead of reporting it queued.
+            MessageBrokerUnavailableException.ThrowIfDisabled(brokerStatus);
+
             var queued = await AutoTagTrigger.QueueIfNeededAsync(
-                publisher, unitOfWork, autoTaggingEnabled, fileId, file.MimeType, ct: ct);
+                outbox, unitOfWork, autoTaggingEnabled, fileId, file.MimeType, ct: ct);
 
             await Send.OkAsync(new AutoTagFileResponse
             {
@@ -82,7 +86,7 @@ public class AutoTagFileEndpoint(
                 Queued = queued,
                 Message = queued
                     ? "Auto-tag enrichment queued."
-                    : "File already has a successful enrichment; skipped."
+                    : "File already has a successful enrichment or one in progress; skipped."
             }, ct);
         }
         catch (AutoTaggingDisabledException ex)

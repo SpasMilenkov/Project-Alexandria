@@ -10,7 +10,7 @@ namespace Alexandria.Services.Storage.Policies;
 public class JobQueue(
     ITranspilationJobService jobService,
     IPreviewService previewService,
-    IPublisherService publisher,
+    IOutbox outbox,
     IUnitOfWork unitOfWork,
     ILogger<JobQueue> logger,
     IOptions<ProcessingCapabilities> capabilities) : IJobQueue
@@ -32,5 +32,5 @@ public class JobQueue(
 
     public Task QueueAutoTagAsync(Guid fileId, AutoTagParameters parameters, string mimeType,
         CancellationToken ct = default)
-        => AutoTagTrigger.QueueIfNeededAsync(publisher, unitOfWork, _autoTaggingEnabled, fileId, mimeType, logger, ct);
+        => AutoTagTrigger.QueueIfNeededAsync(outbox, unitOfWork, _autoTaggingEnabled, fileId, mimeType, logger, ct);
 }

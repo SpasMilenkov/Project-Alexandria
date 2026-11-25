@@ -199,7 +199,7 @@ public class PreviewHandlerTests
     }
 
     [Fact]
-    public async Task image_failure_marks_job_failed_and_rethrows_for_dead_letter()
+    public async Task image_failure_marks_job_failed_without_rethrowing()
     {
         StoredJob();
         StoredVersion();
@@ -212,7 +212,8 @@ public class PreviewHandlerTests
 
         var act = () => sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        // Recorded on the job for the automatic retry; a rethrow would retry the delivery too.
+        await act.Should().NotThrowAsync();
         await _jobs.Received(1).UpdateStatusAsync(
             _jobId, JobStatus.Failed, Arg.Any<int?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
@@ -298,7 +299,7 @@ public class PreviewHandlerTests
     }
 
     [Fact]
-    public async Task media_generation_failure_marks_job_failed_and_rethrows()
+    public async Task media_generation_failure_marks_job_failed_without_rethrowing()
     {
         StoredJob();
         StoredVersion("video/mp4");
@@ -312,7 +313,7 @@ public class PreviewHandlerTests
 
         var act = () => sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().NotThrowAsync();
         await _jobs.Received(1).UpdateStatusAsync(
             _jobId, JobStatus.Failed, Arg.Any<int?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
@@ -340,7 +341,7 @@ public class PreviewHandlerTests
 
         var act = () => sut.HandleAsync(_jobId.ToString(), cts.Token);
 
-        await act.Should().ThrowAsync<Exception>();
+        await AssertInterruptionOutcomeAsync(act, cancelled);
         scratch.Should().NotBeNull();
         IoDirectory.Exists(scratch).Should().BeFalse();
     }
@@ -369,9 +370,22 @@ public class PreviewHandlerTests
 
         var act = () => sut.HandleAsync(_jobId.ToString(), cts.Token);
 
-        await act.Should().ThrowAsync<Exception>();
+        await AssertInterruptionOutcomeAsync(act, cancelled);
         scratch.Should().NotBeNull();
         IoDirectory.Exists(scratch).Should().BeFalse();
+    }
+
+    // A shutdown propagates so the message is redelivered; a tool failure is recorded on the job
+    // for the automatic retry and the delivery completes.
+    private static async Task AssertInterruptionOutcomeAsync(Func<Task> act, bool cancelled)
+    {
+        if (cancelled)
+        {
+            await act.Should().ThrowAsync<OperationCanceledException>();
+            return;
+        }
+
+        await act.Should().NotThrowAsync();
     }
 
     // The service only hands back paths on success, so these files are unknown to the handler.
@@ -408,7 +422,7 @@ public class PreviewHandlerTests
 
     private async Task AssertGivesUpWithoutRetryingAsync(Func<Task> handle)
     {
-        await handle.Should().ThrowAsync<PreviewSourceDeletedException>();
+        await handle.Should().NotThrowAsync();
 
         await _jobs.Received(1).UpdateStatusAsync(
             _jobId, JobStatus.Failed, Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
@@ -478,7 +492,7 @@ public class PreviewHandlerTests
 
         var act = () => sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().NotThrowAsync();
         await _jobs.DidNotReceive().MarkNonRetryableAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
@@ -588,7 +602,7 @@ public class PreviewHandlerTests
 
         var act = () => sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<DocumentPasswordProtectedException>();
+        await act.Should().NotThrowAsync();
         await pdf.DidNotReceive().GeneratePreviewAsync(
             Arg.Any<string>(), Arg.Any<FileCategory>(), Arg.Any<CancellationToken>());
         await _jobs.Received(1).UpdateStatusAsync(
@@ -628,7 +642,7 @@ public class PreviewHandlerTests
     }
 
     [Fact]
-    public async Task document_missing_output_marks_job_failed_and_rethrows()
+    public async Task document_missing_output_marks_job_failed_without_rethrowing()
     {
         StoredJob();
         StoredVersion("application/pdf");
@@ -642,7 +656,7 @@ public class PreviewHandlerTests
 
         var act = () => sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().NotThrowAsync();
         await _jobs.Received(1).UpdateStatusAsync(
             _jobId, JobStatus.Failed, Arg.Any<int?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());

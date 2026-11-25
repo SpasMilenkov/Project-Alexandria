@@ -17,7 +17,7 @@ public static class ServiceExtensions
         IConfiguration configuration)
     {
         services.AddCoreWorkerServices();
-        services.AddRabbitMqAsync(configuration);
+        services.AddRabbitMqAsync(configuration, ServiceType.DocumentPreviews);
 
         services.AddScoped<IPdfPreviewService, PdfPreviewService>();
         services.AddScoped<IDocumentMetadataService, DocumentMetadataService>();

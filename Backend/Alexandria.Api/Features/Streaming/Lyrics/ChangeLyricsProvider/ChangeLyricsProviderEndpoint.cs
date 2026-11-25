@@ -1,5 +1,6 @@
 using Alexandria.Api.Features.Auth.Extensions;
 using Alexandria.Common.Exceptions;
+using Alexandria.Common.Exceptions.Streaming.Lyrics;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using FastEndpoints;
@@ -36,6 +37,11 @@ internal sealed class ChangeProviderEndpoint(ITrackLyricsService lyricsService) 
             await Send.ErrorsAsync(503, ct);
         }
         catch (CapabilityUnavailableException ex)
+        {
+            AddError(ex.Message);
+            await Send.ErrorsAsync(409, ct);
+        }
+        catch (LyricsFetchInProgressException ex)
         {
             AddError(ex.Message);
             await Send.ErrorsAsync(409, ct);

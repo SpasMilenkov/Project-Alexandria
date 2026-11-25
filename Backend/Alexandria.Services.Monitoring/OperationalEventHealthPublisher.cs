@@ -116,9 +116,9 @@ public class OperationalEventHealthPublisher(IServiceScopeFactory scopeFactory) 
             "worker-lyricsworker" => ServiceType.Lyrics,
             "worker-mediametadataworker" => ServiceType.MediaMetadata,
             "worker-playlistworker" => ServiceType.Playlist,
-            "postgres" or "storage" or "rabbitmq" => ServiceType.Api,
+            "postgres" or "storage" or "rabbitmq" or "outbox" => ServiceType.Api,
             _ => default
         };
-        return serviceType != default || checkName is "postgres" or "storage" or "rabbitmq";
+        return serviceType != default || checkName is "postgres" or "storage" or "rabbitmq" or "outbox";
     }
 }

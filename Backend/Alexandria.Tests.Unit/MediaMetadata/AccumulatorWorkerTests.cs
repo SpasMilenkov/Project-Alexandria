@@ -27,7 +27,7 @@ public class AccumulatorWorkerTests : IDisposable
     private readonly IEssentiaBatchRepository _batches = Substitute.For<IEssentiaBatchRepository>();
     private readonly IJobRepository _jobs = Substitute.For<IJobRepository>();
     private readonly IOperationalEventRepository _events = Substitute.For<IOperationalEventRepository>();
-    private readonly IPublisherService _publisher = Substitute.For<IPublisherService>();
+    private readonly IOutbox _outbox = Substitute.For<IOutbox>();
     private readonly AccumulatorBuffer _buffer = new();
     private readonly AccumulatorWorker _sut;
     private readonly string _stagedDir = IoDirectory.CreateTempSubdirectory("accumulator-tests").FullName;
@@ -52,6 +52,7 @@ public class AccumulatorWorkerTests : IDisposable
 
         var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(IUnitOfWork)).Returns(_unitOfWork);
+        serviceProvider.GetService(typeof(IOutbox)).Returns(_outbox);
         var scope = Substitute.For<IServiceScope>();
         scope.ServiceProvider.Returns(serviceProvider);
         var scopeFactory = Substitute.For<IServiceScopeFactory>();
@@ -63,7 +64,6 @@ public class AccumulatorWorkerTests : IDisposable
             Substitute.For<ILogger<AccumulatorWorker>>(),
             _buffer,
             Options.Create(new EssentiaConfig()),
-            _publisher,
             provider,
             Options.Create(_capabilities));
     }
@@ -92,6 +92,16 @@ public class AccumulatorWorkerTests : IDisposable
     private IEnumerable<string> StagedFiles() =>
         IoDirectory.EnumerateFiles(_stagedDir, "*", SearchOption.AllDirectories);
 
+    private Task NothingEnqueued() => _outbox.DidNotReceiveWithAnyArgs().EnqueueAsync(default!, default!, TestContext.Current.CancellationToken);
+
+    private void CaptureEnqueued(Action<byte[]> capture) =>
+        _outbox.EnqueueAsync(Arg.Any<string>(), Arg.Do(capture), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+    private void FailEnqueue() =>
+        _outbox.EnqueueAsync(Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("database down")));
+
     [Fact]
     public async Task FlushAsync_audio_analysis_disabled_does_not_create_durable_jobs_or_dispatch()
     {
@@ -101,7 +111,7 @@ public class AccumulatorWorkerTests : IDisposable
 
         await _batches.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
-        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+        await NothingEnqueued();
     }
 
     [Theory]
@@ -123,7 +133,8 @@ public class AccumulatorWorkerTests : IDisposable
 
         await _batches.Received(1).AddAsync(Arg.Is<EssentiaBatch>(b => b.Backbone == expected),
             TestContext.Current.CancellationToken);
-        await _publisher.Received(1).PublishAsync(Arg.Any<byte[]>(), $"media-metadata.classify.audio.{backbone}");
+        await _outbox.Received(1).EnqueueAsync(
+            $"media-metadata.classify.audio.{backbone}", Arg.Any<byte[]>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -134,7 +145,7 @@ public class AccumulatorWorkerTests : IDisposable
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         await _batches.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
-        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+        await NothingEnqueued();
     }
 
     [Fact]
@@ -149,25 +160,59 @@ public class AccumulatorWorkerTests : IDisposable
         await _events.Received(1).AddActiveIfAbsentAsync(
             Arg.Is<OperationalEvent>(e => e.Code == OperationalEventCode.WorkerCycleFailure),
             Arg.Any<CancellationToken>());
-        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(
-            Arg.Any<byte[]>(), Arg.Any<string>());
+        await NothingEnqueued();
     }
 
     [Fact]
-    public async Task publish_failure_fails_jobs_and_records_cycle_failure()
+    public async Task enqueue_failure_rolls_back_the_batch_and_releases_triggers()
     {
-        _publisher.PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>())
-            .Returns(Task.FromException(new InvalidOperationException("broker down")));
+        var batch = BatchOf(2);
+        var settled = new List<bool>();
+        foreach (var staged in batch)
+            _buffer.TryEnqueue(staged, persisted =>
+            {
+                settled.Add(persisted);
+                return Task.CompletedTask;
+            });
 
-        await _sut.FlushAsync(BatchOf(2), _config,
+        FailEnqueue();
+
+        await _sut.FlushAsync(batch, _config, TestContext.Current.CancellationToken);
+
+        // Nothing was committed, so the triggers are redelivered instead of the jobs being failed.
+        settled.Should().Equal(false, false);
+        await _unitOfWork.Received(1).RollbackAsync(Arg.Any<CancellationToken>());
+        await _jobs.DidNotReceiveWithAnyArgs().UpdateStatusForJobsAsync(default!, default, default!,
             TestContext.Current.CancellationToken);
-
-        await _jobs.Received(1).UpdateStatusForJobsAsync(
-            Arg.Is<IEnumerable<Guid>>(ids => ids.Count() == 2),
-            JobStatus.Failed, "publish failed", Arg.Any<CancellationToken>());
         await _events.Received(1).AddActiveIfAbsentAsync(
             Arg.Is<OperationalEvent>(e => e.Code == OperationalEventCode.WorkerCycleFailure),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task triggers_are_acked_only_after_the_batch_and_dispatch_commit()
+    {
+        var batch = BatchOf(1);
+        var committedWhenSettled = new List<bool>();
+        foreach (var staged in batch)
+            _buffer.TryEnqueue(staged, _ =>
+            {
+                committedWhenSettled.Add(_unitOfWork.ReceivedCalls()
+                    .Any(call => call.GetMethodInfo().Name == nameof(IUnitOfWork.CommitAsync)));
+                return Task.CompletedTask;
+            });
+
+        await _sut.FlushAsync(batch, _config, TestContext.Current.CancellationToken);
+
+        committedWhenSettled.Should().Equal(true);
+        Received.InOrder(() =>
+        {
+            _unitOfWork.BeginTransactionAsync(Arg.Any<CancellationToken>());
+            _batches.AddAsync(Arg.Any<EssentiaBatch>(), Arg.Any<CancellationToken>());
+            _outbox.EnqueueAsync("media-metadata.classify.audio.effnet", Arg.Any<byte[]>(),
+                Arg.Any<CancellationToken>());
+            _unitOfWork.CommitAsync(Arg.Any<CancellationToken>());
+        });
     }
 
     [Fact]
@@ -178,8 +223,7 @@ public class AccumulatorWorkerTests : IDisposable
             _buffer.TryEnqueue(staged).Should().Be(EnqueueResult.Added);
 
         byte[]? published = null;
-        _publisher.PublishAsync(Arg.Do<byte[]>(b => published = b), Arg.Any<string>())
-            .Returns(Task.CompletedTask);
+        CaptureEnqueued(b => published = b);
 
         await _sut.FlushAsync(batch, _config, TestContext.Current.CancellationToken);
 
@@ -187,8 +231,8 @@ public class AccumulatorWorkerTests : IDisposable
         var request = JsonSerializer.Deserialize<ClassifyRequest>(published!);
         request.Should().NotBeNull();
         request!.Files.Should().HaveCount(2);
-        await _publisher.Received(1).PublishAsync(
-            Arg.Any<byte[]>(), "media-metadata.classify.audio.effnet");
+        await _outbox.Received(1).EnqueueAsync(
+            "media-metadata.classify.audio.effnet", Arg.Any<byte[]>(), Arg.Any<CancellationToken>());
         await _events.DidNotReceiveWithAnyArgs().AddActiveIfAbsentAsync(
             Arg.Any<OperationalEvent>(), Arg.Any<CancellationToken>());
         foreach (var staged in batch)
@@ -257,8 +301,7 @@ public class AccumulatorWorkerTests : IDisposable
         var batch = BatchOf(2);
 
         byte[]? published = null;
-        _publisher.PublishAsync(Arg.Do<byte[]>(b => published = b), Arg.Any<string>())
-            .Returns(Task.CompletedTask);
+        CaptureEnqueued(b => published = b);
 
         await _sut.FlushAsync(batch, _config,
             TestContext.Current.CancellationToken);
@@ -283,8 +326,7 @@ public class AccumulatorWorkerTests : IDisposable
         await IoFile.WriteAllTextAsync(second, "version-2", TestContext.Current.CancellationToken);
 
         var published = new List<byte[]>();
-        _publisher.PublishAsync(Arg.Do<byte[]>(published.Add), Arg.Any<string>())
-            .Returns(Task.CompletedTask);
+        CaptureEnqueued(published.Add);
 
         await _sut.FlushAsync([new StagedFile(fileId, first, "audio/mpeg")], _config, TestContext.Current.CancellationToken);
         await _sut.FlushAsync([new StagedFile(fileId, second, "audio/mpeg")], _config, TestContext.Current.CancellationToken);
@@ -311,10 +353,9 @@ public class AccumulatorWorkerTests : IDisposable
     }
 
     [Fact]
-    public async Task publish_failure_removes_staged_inputs()
+    public async Task enqueue_failure_removes_staged_inputs()
     {
-        _publisher.PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>())
-            .Returns(Task.FromException(new InvalidOperationException("broker down")));
+        FailEnqueue();
 
         await _sut.FlushAsync(BatchOf(2), _config,
             TestContext.Current.CancellationToken);
@@ -342,7 +383,7 @@ public class AccumulatorWorkerTests : IDisposable
         settled.Should().Equal(false, false);
         StagedFiles().Should().BeEmpty();
         await _batches.DidNotReceiveWithAnyArgs().AddAsync(Arg.Any<EssentiaBatch>(), Arg.Any<CancellationToken>());
-        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+        await NothingEnqueued();
         await _events.Received(1).AddActiveIfAbsentAsync(
             Arg.Is<OperationalEvent>(e => e.Code == OperationalEventCode.WorkerCycleFailure),
             Arg.Any<CancellationToken>());
