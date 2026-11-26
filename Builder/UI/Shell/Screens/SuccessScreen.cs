@@ -39,6 +39,11 @@ public static class SuccessScreen
                 facts.Add(("Monitoring", origin + "/monitoring/"));
             }
 
+            if (VideoEncodingEnvironment.Outcome(context) is { } videoEncoding)
+            {
+                facts.Add(("Video encoding", videoEncoding));
+            }
+
             facts.Add(("Settings", context.InstallPath));
             facts.Add(("Installer log", context.DeploymentLogPath ?? "not recorded"));
             facts.Add(("Capabilities", string.Join(", ", FeatureCatalog.All.Where(feature => capabilities.IsEnabled(feature.Id)).Select(feature => feature.Label))));

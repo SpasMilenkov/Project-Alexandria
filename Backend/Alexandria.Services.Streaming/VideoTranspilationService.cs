@@ -1,27 +1,21 @@
 using Alexandria.Common;
+using Alexandria.Common.Exceptions.Transpilation;
+using Alexandria.Common.Processes;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files.Streaming;
+using Alexandria.Services.Streaming.VideoEncoding;
 using Microsoft.Extensions.Logging;
 
 namespace Alexandria.Services.Streaming;
 
 public partial class VideoTranspilationService(
     ILogger<VideoTranspilationService> logger,
-    IUnitOfWork unitOfWork) : IVideoTranspilationService
+    IUnitOfWork unitOfWork,
+    IVideoEncoderSelector encoderSelector) : IVideoTranspilationService
 {
-    private sealed record VideoQualityLane(int Width, int Height, int BitrateKbps, int Crf);
-
-    private static readonly IReadOnlyDictionary<VideoRung, VideoQualityLane> RungMap =
-        new Dictionary<VideoRung, VideoQualityLane>
-        {
-            [VideoRung.P360] = new(640, 360, 800, 28),
-            [VideoRung.P480] = new(854, 480, 1500, 26),
-            [VideoRung.P720] = new(1280, 720, 2500, 23),
-            [VideoRung.P1080] = new(1920, 1080, 5000, 21),
-            [VideoRung.P1440] = new(2560, 1440, 8000, 19),
-            [VideoRung.P2160] = new(3840, 2160, 16000, 17),
-        };
+    // Reading stream headers is quick; a source that takes longer is not worth transcoding.
+    private static readonly TimeSpan SourceProbeTimeout = TimeSpan.FromMinutes(1);
 
     /// <inheritdoc/>
     public async Task<TranspilationOutput> TranspileAsync(
@@ -31,17 +25,18 @@ public partial class VideoTranspilationService(
         VideoRung[] videoRungs,
         CancellationToken ct = default)
     {
-        var lanes = videoRungs
-            .OrderBy(r => r)
-            .Select(r => RungMap[r])
-            .ToList();
+        LogTranspilationStarting(logger, inputPath, outputDirectory);
+
+        var source = await ProbeSourceAsync(inputPath, ct);
+        var lanes = VideoLadder.Fit(source, videoRungs);
+
+        LogLanesFitted(logger, inputPath, $"{source.Width}x{source.Height}",
+            string.Join(", ", lanes.Select(lane => $"{lane.Width}x{lane.Height}")));
 
         var dashDir = Path.Combine(outputDirectory, "dash");
         Directory.CreateDirectory(dashDir);
 
-        LogTranspilationStarting(logger, inputPath, outputDirectory);
-
-        await RunDashPassAsync(jobId, inputPath, dashDir, lanes, ct);
+        await RunDashPassAsync(jobId, inputPath, dashDir, lanes, source, ct);
 
         LogTranspilationCompleted(logger, inputPath);
 
@@ -61,39 +56,92 @@ public partial class VideoTranspilationService(
         string inputPath,
         string dashDir,
         IReadOnlyList<VideoQualityLane> lanes,
+        VideoSource source,
         CancellationToken ct)
     {
         var manifestPath = Path.Combine(dashDir, "manifest.mpd");
+        var hasAudio = source.HasAudio;
+        var encoder = await encoderSelector.SelectAsync(ct);
+        var budget = new TranscodeBudget(TranscodeProcess.MaxDuration);
+        var ratePlan = new GpuRatePlan();
 
-        var args = new List<string> { "-i", $"\"{inputPath}\"" };
+        await VideoEncodeFallback.RunAsync(
+            VideoEncodeFallback.AttemptsFor(encoder),
+            attempt => RunAttemptAsync(attempt),
+            (failed, next, ex) =>
+            {
+                LogAttemptFailed(logger, inputPath, failed, next, ex.ExitCode, LastLine(ex.Stderr));
+                ClearOutput(dashDir);
+            });
 
-        for (var i = 0; i < lanes.Count; i++)
+        LogDashPassCompleted(logger, manifestPath);
+
+        async Task RunAttemptAsync(VideoEncodeAttempt attempt)
         {
-            var lane = lanes[i];
-            args.AddRange([
-                "-map", "0:v",
-                $"-c:v:{i}", "libx264",
-                "-preset", "fast",
-                $"-crf", lane.Crf.ToString(),
-                $"-vf:{i}", $"scale={lane.Width}:{lane.Height}",
-                $"-b:v:{i}", $"{lane.BitrateKbps}k",
-            ]);
+            if (attempt == VideoEncodeAttempt.Cpu)
+            {
+                await RunPassAsync(attempt, DashVideoArguments.ForCpu(inputPath, manifestPath, lanes, hasAudio));
+                return;
+            }
+
+            var device = encoder.GpuDevice ?? throw new InvalidOperationException("A GPU attempt needs a selected GPU.");
+            var gpuDecode = attempt == VideoEncodeAttempt.GpuDecodeAndEncode;
+
+            if (ratePlan.KnownToOvershoot)
+                LogStraightToCapped(logger, inputPath, attempt);
+
+            // Constant QP keeps static footage small; busy footage that runs past a lane's
+            // ceiling is encoded again capped, since it needs the whole bitrate allowance anyway.
+            await ratePlan.RunAsync(
+                rateControl => RunPassAsync(attempt, DashVideoArguments.ForGpu(inputPath, manifestPath, lanes, hasAudio,
+                    device, gpuDecode, rateControl)),
+                () => LaneBitrateCheck.FindProblem(manifestPath, lanes),
+                problem =>
+                {
+                    LogCappedReencode(logger, inputPath, problem);
+                    ClearOutput(dashDir);
+                });
         }
 
-        args.AddRange([
-            "-map", "0:a",
-            "-c:a", "aac",
-            "-b:a", "128k",
-            "-f", "dash",
-            "-seg_duration", "6",
-            "-adaptation_sets", "\"id=0,streams=v id=1,streams=a\"",
-            $"\"{manifestPath}\""
-        ]);
+        async Task RunPassAsync(VideoEncodeAttempt attempt, string arguments)
+        {
+            LogDashPassStarting(logger, inputPath, attempt);
 
-        await TranscodeProcess.RunFfmpegAsync(
-            new TranscodeRequest(jobId, inputPath, string.Join(" ", args), "video DASH", manifestPath),
-            unitOfWork,
-            logger,
-            ct);
+            await TranscodeProcess.RunFfmpegAsync(
+                new TranscodeRequest(jobId, inputPath, arguments, $"video DASH ({attempt})", manifestPath,
+                    source.Duration),
+                budget,
+                unitOfWork,
+                logger,
+                ct);
+        }
+    }
+
+    // A pass that is replaced leaves segments the next one must not mix with its own.
+    private static void ClearOutput(string dashDir)
+    {
+        Directory.Delete(dashDir, recursive: true);
+        Directory.CreateDirectory(dashDir);
+    }
+
+    private static string LastLine(string? stderr) =>
+        stderr?.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault()
+        ?? "no output";
+
+    private async Task<VideoSource> ProbeSourceAsync(string inputPath, CancellationToken ct)
+    {
+        var result = await ExternalProcess.RunAsync(
+            "ffprobe", VideoSourceProbe.Arguments(inputPath), SourceProbeTimeout, logger, ct);
+
+        if (result.ExitCode != 0)
+            throw new TranspilationFfprobeException(inputPath, result.ExitCode, result.StdErrTail);
+
+        var source = VideoSourceProbe.Parse(result.StdOut)
+            ?? throw new TranspilationFfprobeException(inputPath, $"'{inputPath}' has no video stream to transcode.");
+
+        if (!source.HasAudio)
+            LogSourceWithoutAudio(logger, inputPath);
+
+        return source;
     }
 }

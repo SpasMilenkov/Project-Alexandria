@@ -2,6 +2,7 @@ using Builder.Certificates;
 using Builder.Common;
 using Builder.Configuration;
 using Builder.Credentials;
+using Builder.Diagnostics;
 using Builder.Docker;
 using Builder.Network;
 using Builder.Preferences;
@@ -52,7 +53,8 @@ public class MainFlow
 
         shell.RunAll(
         [
-            ("Welcome", s => IntroScreen.Run(s, UiPreferencesStore.Save)),
+            ("Welcome", s => IntroScreen.Run(s, UiPreferencesStore.Save,
+                open => VideoGpuScreen.Run(open, _systemChecker, _dockerService))),
             ("Where to install", SelectTarget),
             ("Features", s => FeaturesScreen.Run(s, _resourceCalculator, MachineMemoryMb())),
             ("System check", s => SystemCheckScreen.Run(s, _systemChecker, _resourceCalculator)),
@@ -65,6 +67,21 @@ public class MainFlow
             ("Installing", s => DeployScreen.Run(s, _configService, _dockerService, _systemChecker)),
             ("Done", s => SuccessScreen.Run(s)),
         ]);
+    }
+
+    // `--diagnose gpu`: the report on its own, as plain text and without the wizard. A missing
+    // worker image is built without asking. Fails when the installation expects a GPU its worker
+    // cannot use, when the image to test with cannot be built, or when the test could not run.
+    public int DiagnoseVideoGpu(TextWriter output)
+    {
+        output.WriteLine("Testing the GPUs. Each test starts a container, so this can take a minute.");
+        var report = new VideoGpuDiagnosis(_systemChecker, _dockerService).Run(Context.InstallPath,
+            PathResolver.FindSourceRoot(Context.LaunchDirectory), buildMissingImage: true, output.WriteLine,
+            Context.Cancellation.Token);
+        output.WriteLine();
+        output.Write(VideoGpuReportText.Render(report));
+
+        return report.WiredGpuFails || report.BuildFailed || report.Incomplete ? 1 : 0;
     }
 
     private ScreenOutcome SelectTarget(Shell shell)
@@ -102,6 +119,7 @@ public class MainFlow
                 Context.OwnsHttpRedirectPort = inspection.HasEnvironment &&
                                                Context.Config.Ports.ContainsKey(PublicEndpoint.HttpRedirectPortKey);
                 Context.InspectedTarget = target;
+                Context.InstalledVideoGpu = inspection.ExistingEnvironment.GetValueOrDefault(VideoEncodingEnvironment.DeviceKey);
 
                 if (string.IsNullOrEmpty(Context.Config.PublicEndpoint.Host) &&
                     Uri.TryCreate(inspection.ExistingEnvironment.GetValueOrDefault("BASE_URL"), UriKind.Absolute, out var existingOrigin) &&

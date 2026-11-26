@@ -1,4 +1,5 @@
 using Builder.Catalog;
+using Builder.Configuration;
 using Builder.SystemCheck;
 using Builder.UI.Shell.Input;
 using Builder.UI.Shell.Screens.Components;
@@ -20,10 +21,11 @@ public static class SystemCheckScreen
     private const int CpuRow = 5;
     private const int MemoryRow = 6;
     private const int DiskRow = 7;
+    private const int GpuRow = 8;
     private const int DockerRowCount = 5;
 
     private static readonly string[] Labels =
-        ["Host platform", "Docker", "Compose plugin", "Daemon", "Platform", "CPU", "Memory", "Disk"];
+        ["Host platform", "Docker", "Compose plugin", "Daemon", "Platform", "CPU", "Memory", "Disk", "Video GPU"];
 
     private static readonly int LabelWidth = Labels.Max(label => label.Length);
 
@@ -101,7 +103,9 @@ public static class SystemCheckScreen
         if (!checker.IsDockerInstalled())
         {
             return Fail(DockerRow, "not found", "Docker is not installed or cannot run",
-                FailureDetails(checker, "The Docker command must be available in your terminal before continuing."));
+                FailureDetails(checker, "Install Docker Engine and the Docker Compose plugin " +
+                                        "(https://docs.docker.com/engine/install/), start the Docker service, " +
+                                        "and make sure your account can use it."));
         }
 
         Pass(DockerRow, ShortVersion(checker.GetDockerVersion()));
@@ -141,13 +145,18 @@ public static class SystemCheckScreen
         }
 
         Pass(PlatformRow, "Linux amd64");
-        Start(CpuRow, MemoryRow, DiskRow);
+        Start(CpuRow, MemoryRow, DiskRow, GpuRow);
 
         var resources = checker.GetSystemResources();
         var features = shell.Context.Features;
 
+        // The installation's GPU first, then this session's pick over it
+        resources.PreferVideoGpu(shell.Context.InstalledVideoGpu);
+        resources.PreferVideoGpu(shell.Context.ChosenVideoGpu);
+
         shell.Context.Resources = resources;
         AssessCapacity(rows, resources, features, calculator.CalculateMinimumRamMb(features));
+        AssessVideoGpu(rows, resources, features);
         SidebarStats.Push(shell, calculator);
 
         var warnings = calculator.GetWarnings(resources, features);
@@ -215,6 +224,41 @@ public static class SystemCheckScreen
             State = diskState,
             Detail = $"{Gigabytes(resources.DockerAvailableDiskMb.GetValueOrDefault())} free",
             Requirement = $"{Gigabytes(ResourceCalculator.MinimumDockerDiskMb)} needed{location}",
+        };
+    }
+
+    // A GPU only speeds up video encoding, so finding none is never a failure.
+    private static void AssessVideoGpu(CheckRow[] rows, SystemResources resources, FeatureSelection features)
+    {
+        if (!VideoEncodingEnvironment.Applies(ServiceCatalog.Resolve(features)))
+        {
+            rows[GpuRow] = rows[GpuRow] with
+            {
+                State = CheckState.Skipped,
+                Detail = "not needed",
+                Requirement = "only adaptive streaming encodes video",
+            };
+
+            return;
+        }
+
+        if (resources.VideoGpus is [var gpu, ..])
+        {
+            rows[GpuRow] = rows[GpuRow] with
+            {
+                State = CheckState.Passed,
+                Detail = gpu.Description,
+                Requirement = "tested after the build; the CPU encodes if it fails",
+            };
+
+            return;
+        }
+
+        rows[GpuRow] = rows[GpuRow] with
+        {
+            State = resources.VideoGpuDetectionError is null ? CheckState.Skipped : CheckState.Unknown,
+            Detail = resources.VideoGpuUnavailableReason is null ? "none found" : "not usable",
+            Requirement = resources.VideoGpuDetectionError ?? resources.VideoGpuUnavailableReason ?? "video is encoded on the CPU",
         };
     }
 

@@ -142,6 +142,38 @@ public class ConfigurationServiceTests
     }
 
     [Fact]
+    public void GenerateDockerCompose_gpuWired_mountsTheGpuFolderAndJoinsItsGroup()
+    {
+        var config = CreateConfig(features => features.SetEnabled(FeatureCatalog.AdaptiveStreaming.Id, true));
+        config.EnvironmentValues[VideoEncodingEnvironment.ModeKey] = "Auto";
+        config.EnvironmentValues[VideoEncodingEnvironment.DeviceKey] = "/dev/dri/by-path/pci-0000:04:00.0-render";
+        config.EnvironmentValues[VideoEncodingEnvironment.GroupKey] = "110";
+        config.EnvironmentValues[VideoEncodingEnvironment.DeviceNumberKey] = "226:128";
+
+        var compose = CreateSut().GenerateDockerCompose(config);
+
+        compose.Should().Contain("      - transpilation_worker_scratch:/tmp/worker-scratch\n      - /dev/dri:/dev/dri:ro\n");
+        compose.Should().Contain(
+            "    device_cgroup_rules:\n      - \"c ${VIDEO_GPU_DEVICE_NUMBER:?VIDEO_GPU_DEVICE_NUMBER is required} rw\"\n");
+        compose.Should().NotContain("226:*");
+        compose.Should().Contain("    group_add:\n      - \"${VIDEO_GPU_GROUP:?VIDEO_GPU_GROUP is required}\"");
+        compose.Should().Contain("VideoEncoding__Mode: ${VIDEO_ENCODING_MODE:-Cpu}");
+        compose.Should().Contain("VideoEncoding__Device: ${VIDEO_GPU_DEVICE:-/dev/dri/renderD128}");
+    }
+
+    [Fact]
+    public void GenerateDockerCompose_noGpu_givesTheWorkerNoGpuAccess()
+    {
+        var config = CreateConfig(features => features.SetEnabled(FeatureCatalog.AdaptiveStreaming.Id, true));
+        config.EnvironmentValues[VideoEncodingEnvironment.ModeKey] = "Cpu";
+
+        var compose = CreateSut().GenerateDockerCompose(config);
+
+        compose.Should().Contain("VideoEncoding__Mode: ${VIDEO_ENCODING_MODE:-Cpu}");
+        compose.Should().NotContain("/dev/dri:/dev/dri").And.NotContain("device_cgroup_rules").And.NotContain("group_add");
+    }
+
+    [Fact]
     public void GenerateDockerCompose_httpRedirectChosen_publishesPort80ToNginx()
     {
         var config = CreateConfig();

@@ -13,6 +13,6 @@ internal static partial class TranscodeProcess
     private static partial void LogWatchdogPollFailed(ILogger logger, Exception ex, Guid jobId);
 
     [LoggerMessage(Level = LogLevel.Debug,
-        Message = "Stopped watching transcode job {JobId} for cancellation.")]
+        Message = "Stopped watching transcode job {JobId}.")]
     private static partial void LogWatchdogStopped(ILogger logger, Guid jobId);
 }

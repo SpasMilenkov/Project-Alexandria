@@ -42,7 +42,8 @@ public static class DeployScreen
         var stateGate = new object();
         var completedPreparation = new HashSet<string>(StringComparer.Ordinal);
         var finishedStages = new HashSet<string>(StringComparer.Ordinal);
-        var expectedStages = InstallationOrchestrator.StageCount(ServiceCatalog.Resolve(context.Config.Features));
+        var expectedStages = InstallationOrchestrator.StageCount(ServiceCatalog.Resolve(context.Config.Features),
+            context.Config.EnvironmentValues);
         var cityShown = 0.0;
         var cityClock = Stopwatch.StartNew();
         DeploymentLog log;
@@ -177,7 +178,8 @@ public static class DeployScreen
                     finishedStages.Add(label);
                 }
 
-                if (label is "Writing configuration files" or "Preparing and verifying audio models" or "Building Alexandria")
+                if (label is "Writing configuration files" or "Preparing and verifying audio models" or "Building Alexandria"
+                    or VideoGpuTest.StageLabel)
                 {
                     completedPreparation.Add(label);
                 }

@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Builder.Common;
 using Builder.Configuration;
 using Builder.Docker;
+using Builder.SystemCheck;
 using Xunit;
 
 namespace Builder.Tests.Docker;
@@ -92,6 +93,83 @@ public class DockerServiceStreamingTests
                 "compose", "--project-name", "test-project", "--project-directory", target.FullName,
                 "-f", Path.Combine(target.FullName, "docker-compose.yml"),
                 "--env-file", Path.Combine(target.FullName, ".env"), "build");
+        }
+        finally
+        {
+            launch.Delete(recursive: true);
+        }
+    }
+
+    // The probe must run the built image through the generated compose file, without starting
+    // dependencies, pulling or allocating a terminal, and keep the report the worker prints.
+    [Fact]
+    public void ProbeVideoGpus_devices_runsTheWorkerProbeThroughComposeAndKeepsItsReport()
+    {
+        var launch = Directory.CreateTempSubdirectory("builder probe ");
+        var target = Directory.CreateDirectory(Path.Combine(launch.FullName, "settings"));
+        ProcessStartInfo? captured = null;
+
+        Func<ProcessStartInfo, Process?> startProcess = info =>
+        {
+            captured = info;
+            return StartShell("echo '[{\"device\":\"/dev/dri/renderD128\",\"usable\":true}]'");
+        };
+
+        try
+        {
+            var sut = CreateSut(startProcess, launch.FullName);
+
+            var result = sut.ProbeVideoGpus("settings", ["/dev/dri/by-path/pci-0000:04:00.0-render", "/dev/dri/renderD129"]);
+
+            result.Succeeded.Should().BeTrue();
+            result.StandardOutput.Should().Contain("\"usable\":true");
+            captured!.ArgumentList.Should().Equal(
+                "compose", "--project-name", "test-project", "--project-directory", target.FullName,
+                "-f", Path.Combine(target.FullName, "docker-compose.yml"),
+                "--env-file", Path.Combine(target.FullName, ".env"),
+                "run", "--rm", "--no-deps", "--no-TTY", "--pull", "never", "transpilation-worker",
+                "--probe-gpu", "/dev/dri/by-path/pci-0000:04:00.0-render", "/dev/dri/renderD129");
+        }
+        finally
+        {
+            launch.Delete(recursive: true);
+        }
+    }
+
+    // Outside Compose the probe gets the same mount, device rule and group the worker would, for
+    // the one node under test, with no network and no pulling.
+    [Fact]
+    public void ProbeVideoGpuInImage_node_runsTheBuiltImageWithOnlyThatNodesAccess()
+    {
+        var launch = Directory.CreateTempSubdirectory("builder probe ");
+        var commands = new List<string[]>();
+
+        Func<ProcessStartInfo, Process?> startProcess = info =>
+        {
+            commands.Add([.. info.ArgumentList]);
+            return StartShell("echo ok");
+        };
+
+        try
+        {
+            var sut = CreateSut(startProcess, launch.FullName);
+            var node = new RenderNode("/dev/dri/by-path/pci-0000:04:00.0-render", "0000:04:00.0", "AMD", "226:128", 110);
+
+            sut.InspectImage("probe-image", TestContext.Current.CancellationToken);
+            sut.BuildTranscoderImage("/source", "probe-image", cancellationToken: TestContext.Current.CancellationToken);
+            sut.ProbeVideoGpuInImage("probe-image", node, TestContext.Current.CancellationToken);
+            sut.RemoveImage("probe-image", TestContext.Current.CancellationToken);
+
+            commands[0].Should().Equal("image", "inspect", "--format", "{{.Id}}", "probe-image");
+            commands[1].Should().Equal("build", "--file", "/source/Backend/Alexandria.Workers.MediaTranspilation/Dockerfile",
+                "--tag", "probe-image", "/source/Backend");
+            commands[2].Should().Equal(
+                "run", "--rm", "--pull", "never", "--network", "none",
+                "--volume", "/dev/dri:/dev/dri:ro",
+                "--device-cgroup-rule", "c 226:128 rw",
+                "--group-add", "110",
+                "probe-image", "--probe-gpu", node.Path);
+            commands[3].Should().Equal("image", "rm", "probe-image");
         }
         finally
         {

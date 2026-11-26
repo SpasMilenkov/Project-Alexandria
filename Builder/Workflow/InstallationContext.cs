@@ -29,6 +29,17 @@ public class InstallationContext
     public bool AdminLoginVerified { get; set; }
     public string? DeploymentLogPath { get; set; }
     public string? InspectedTarget { get; set; }
+
+    // Started as `--diagnose gpu`: report on the installation instead of running the wizard.
+    public bool DiagnoseGpu { get; set; }
+
+    // The render node picked on the GPU screen, and the one the existing installation is wired
+    // to. Setup tries them first, in that order, so a choice survives later repairs.
+    public string? ChosenVideoGpu { get; set; }
+    public string? InstalledVideoGpu { get; set; }
+
+    // Where video ends up being encoded, once the GPU test after the build has settled it.
+    public string? VideoEncodingOutcome { get; set; }
     public CancellationTokenSource Cancellation { get; } = new();
 
     public FeatureSelection Features

@@ -59,6 +59,19 @@ public class IntroScreenTests : IDisposable
         Theme.Active.Id.Should().Be("aurora");
     }
 
+    [Fact]
+    public void Run_dPressed_opensTheGpuCheck_thenReturnsToMenu()
+    {
+        var opened = 0;
+        using var h = new ShellHarness(new FakeKeys().Press(ConsoleKey.D, 'd').Enter());
+
+        var outcome = IntroScreen.Run(h.Shell, UiPreferencesStore.Save, _ => opened++);
+
+        outcome.Should().Be(ScreenOutcome.Continue);
+        opened.Should().Be(1);
+        h.Output.Should().Contain("video GPU check");
+    }
+
     public void Dispose()
     {
         try

@@ -29,7 +29,7 @@ public class ImagePreviewConfig
     public int TimeoutSeconds { get; set; } = 120;
 
     /// <summary>
-    /// libvips worker threads per operation. Zero keeps the libvips default (one per core).
+    /// libvips worker threads per operation. Zero uses one per core the container may use.
     /// </summary>
     public int Concurrency { get; set; }
 

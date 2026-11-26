@@ -42,6 +42,8 @@ public static class InstallationSummary
 
         if (capabilities.MonitoringEnabled) lines.Add("Grafana: " + config.PublicEndpoint.Origin + "/monitoring/");
 
+        if (VideoEncodingEnvironment.Outcome(context) is { } videoEncoding) lines.Add("Video encoding: " + videoEncoding);
+
         if (File.Exists(Path.Combine(context.InstallPath, "nginx/certs/server.crt")))
         {
             var certificate = new CertificateService().ReadDetails(context.InstallPath, config.PublicEndpoint.Host, config.Certificates);

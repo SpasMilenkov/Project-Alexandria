@@ -23,4 +23,9 @@ public partial class AudioTranspilationService
         "Audio DASH pass completed → '{ManifestPath}'")]
     private static partial void LogDashPassCompleted(
         ILogger logger, string manifestPath);
+
+    [LoggerMessage(9006, LogLevel.Information,
+        "ffprobe found no length for '{InputPath}' (exit {ExitCode}); transcoding it without progress")]
+    private static partial void LogDurationUnknown(
+        ILogger logger, string inputPath, int exitCode);
 }

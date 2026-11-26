@@ -9,6 +9,8 @@
 
     volumes:
       - transpilation_worker_scratch:/tmp/worker-scratch
+{{TRANSPILATION_GPU_VOLUME}}
+{{TRANSPILATION_GPU_ACCESS}}
 
     environment:
       Serilog__MinimumLevel__Default: Information
@@ -41,6 +43,8 @@
       TMPDIR: /tmp/worker-scratch
       RabbitMQ__Consumer__QueueName: transpilation-queue
       RabbitMQ__VirtualHost: ${RABBITMQ_VHOST:-alexandria}
+      VideoEncoding__Mode: ${VIDEO_ENCODING_MODE:-Cpu}
+      VideoEncoding__Device: ${VIDEO_GPU_DEVICE:-/dev/dri/renderD128}
 
     depends_on:
       postgres:
@@ -68,9 +72,13 @@
         max-size: "10m"
         max-file: "5"
 
+    # Swap capped at the memory cap, so hitting it restarts the container instead of
+    # pushing the host into swap.
+    memswap_limit: ${LIMIT_TRANSPILATION_WORKER_MEMORY:-1024M}
     deploy:
       resources:
         limits:
-          memory: 1G
+          cpus: "${LIMIT_TRANSPILATION_WORKER_CPUS:-4}"
+          memory: ${LIMIT_TRANSPILATION_WORKER_MEMORY:-1024M}
         reservations:
           memory: 512M

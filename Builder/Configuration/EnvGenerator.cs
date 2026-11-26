@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using Builder.Catalog;
 using Builder.Common;
 using Builder.Credentials;
+using Builder.SystemCheck;
 
 namespace Builder.Configuration;
 
@@ -152,7 +153,10 @@ public static class EnvGenerator
                     continue;
                 }
 
-                var value = values.TryGetValue(line.Key, out var replacement) ? replacement : line.Value!;
+                // The values are the whole resolved environment, so a key they no longer hold was
+                // dropped on purpose, such as the limits of a service no longer selected.
+                if (!values.TryGetValue(line.Key, out var value)) continue;
+
                 builder.Append(line.Key).Append('=').Append(Encode(value)).AppendLine(line.Comment);
                 written.Add(line.Key);
             }
@@ -175,6 +179,7 @@ public static class EnvGenerator
         AppendSection(builder, "CORS", values, written, "CORS_");
         AppendSection(builder, "Frontend and feature switches", values, written, "PBKDF2_", "STREAMING_", "LYRICS_", "AUTOTAGGING_");
         AppendSection(builder, "Monitoring", values, written, "GRAFANA_", "POSTGRES_EXPORTER_");
+        AppendSection(builder, "Resource limits (recomputed for this machine on every setup run)", values, written, ResourceBudget.EnvironmentPrefix);
         AppendSection(builder, "Additional settings", values, written, string.Empty);
 
         return builder.ToString();

@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Builder.AudioModels;
 using Builder.Catalog;
+using Builder.Common;
 using Builder.Configuration;
 using Builder.Credentials;
 using Builder.Deployment;
@@ -147,15 +148,21 @@ public class InstallationOrchestratorTests : IDisposable
     }
 
     [Theory]
-    [InlineData(true, true)]
-    [InlineData(false, false)]
-    public void StageCount_matchesTheStagesAFullRunReports(bool audio, bool monitoring)
+    [InlineData(true, true, true)]
+    [InlineData(false, false, false)]
+    public void StageCount_matchesTheStagesAFullRunReports(bool audio, bool monitoring, bool gpu)
     {
         WriteHandoff();
         _context.Config.Features.SetEnabled(FeatureCatalog.Monitoring.Id, monitoring);
         _context.Config.Features.SetEnabled(FeatureCatalog.Autotagging.Id, audio);
         var capabilities = ServiceCatalog.Resolve(_context.Config.Features);
         var stages = new List<string>();
+
+        if (gpu)
+        {
+            WireGpus(Amd);
+            ProbeReports(Passed(Amd));
+        }
 
         _docker.GetExpectedServices(Arg.Any<string>(), Arg.Any<Action<string>?>()).Returns(capabilities.ServiceIds.ToArray());
 
@@ -165,7 +172,7 @@ public class InstallationOrchestratorTests : IDisposable
             action(_ => { });
         });
 
-        stages.Should().HaveCount(InstallationOrchestrator.StageCount(capabilities));
+        stages.Should().HaveCount(InstallationOrchestrator.StageCount(capabilities, _context.Config.EnvironmentValues));
     }
 
     [Fact]
@@ -485,6 +492,197 @@ public class InstallationOrchestratorTests : IDisposable
         report.Should().NotContain("obsolete-bootstrap-password");
         _docker.DidNotReceive().ComposeDown(Arg.Any<string>());
     }
+
+    private static readonly RenderNode Amd = new("/dev/dri/by-path/pci-0000:04:00.0-render", "0000:04:00.0", "AMD", "226:128", 110);
+    private static readonly RenderNode Intel = new("/dev/dri/by-path/pci-0000:00:02.0-render", "0000:00:02.0", "Intel", "226:129", 105);
+    private readonly List<string> _probedWhileWiredTo = [];
+
+    private void WireGpus(params RenderNode[] gpus)
+    {
+        _context.Resources.VideoGpus = gpus;
+        var capabilities = ServiceCatalog.Resolve(_context.Features);
+        ResourceBudget.ApplyEnvironment(_context.Config.EnvironmentValues, capabilities, _context.Resources);
+        VideoEncodingEnvironment.Apply(_context.Config.EnvironmentValues, capabilities, _context.Resources);
+    }
+
+    private static string Passed(RenderNode gpu) =>
+        $$"""{"device":"{{gpu.Path}}","usable":true,"driver":"Mesa driver for {{gpu.Vendor}}","detail":null}""";
+
+    private static string Failed(RenderNode gpu) =>
+        $$"""{"device":"{{gpu.Path}}","usable":false,"driver":null,"detail":"ffmpeg exited with code 1."}""";
+
+    // Answers for the devices asked about, and records which device the written .env pointed the
+    // worker at during each run, since a GPU must be tried with only its own access.
+    private void ProbeReports(params string[] entries) =>
+        _docker.ProbeVideoGpus(Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<Action<string>?>())
+            .Returns(call =>
+            {
+                _events.Add("probe");
+                var devices = call.ArgAt<IReadOnlyList<string>>(1);
+                var written = EnvGenerator.Parse(File.ReadAllText(Path.Combine(_directory, ".env")));
+                _probedWhileWiredTo.Add(string.Join(",", devices) + " wired to " + written[VideoEncodingEnvironment.DeviceNumberKey]);
+                var answers = entries.Where(entry => devices.Any(device => entry.Contains($"\"{device}\""))).ToArray();
+
+                return new ProcessResult(answers.Any(entry => entry.Contains("\"usable\":true")) ? 0 : 1,
+                    "[" + string.Join(",", answers) + "]", string.Empty);
+            });
+
+    [Fact]
+    public void Execute_gpuPassesItsTest_keepsItBetweenBuildAndInfrastructure()
+    {
+        WriteHandoff();
+        WireGpus(Amd);
+        ProbeReports(Passed(Amd));
+        var limitsBefore = Limits();
+
+        Execute();
+
+        _events.IndexOf("build").Should().BeLessThan(_events.IndexOf("probe"));
+        _events.IndexOf("probe").Should().BeLessThan(_events.IndexOf("Starting storage and messaging"));
+        _probedWhileWiredTo.Should().Equal($"{Amd.Path} wired to 226:128");
+        _configuration.Received(1).BeginGeneration(Arg.Any<InstallationConfig>(), Arg.Any<string>());
+        _context.Config.EnvironmentValues[VideoEncodingEnvironment.DeviceKey].Should().Be(Amd.Path);
+        Limits().Should().Equal(limitsBefore);
+        _context.VideoEncodingOutcome.Should().Be("On the GPU: Mesa driver for AMD");
+    }
+
+    [Fact]
+    public void Execute_gpuFailsItsTest_rewiresTheWorkerToTheCpuBeforeAnythingStarts()
+    {
+        WriteHandoff();
+        WireGpus(Amd);
+        ProbeReports(Failed(Amd));
+        _configuration.When(service => service.WriteAllConfigFiles(Arg.Any<InstallationConfig>(), Arg.Any<string>()))
+            .Do(_ => _events.Add("write"));
+
+        Execute();
+
+        _events.LastIndexOf("write").Should().BeGreaterThan(_events.IndexOf("probe"));
+        _events.LastIndexOf("validate").Should().BeLessThan(_events.IndexOf("Starting storage and messaging"));
+        _configuration.Received(2).BeginGeneration(Arg.Any<InstallationConfig>(), _directory);
+        var written = EnvGenerator.Parse(File.ReadAllText(Path.Combine(_directory, ".env")));
+        written[VideoEncodingEnvironment.ModeKey].Should().Be("Cpu");
+        written.Should().NotContainKeys(VideoEncodingEnvironment.DeviceKey, VideoEncodingEnvironment.GroupKey,
+            VideoEncodingEnvironment.DeviceNumberKey);
+        _context.Config.EnvironmentValues.Should().NotContainKey(VideoEncodingEnvironment.DeviceKey);
+        _context.Resources.VideoGpus.Should().BeEmpty();
+        _context.Resources.VideoGpuUnavailableReason.Should().Be("no detected GPU could encode in the test after the build");
+        _context.VideoEncodingOutcome.Should().Be("On the CPU, because no GPU could encode");
+    }
+
+    // The worker may only open the GPU it is wired to, so each GPU is tried on its own after the
+    // files have been rewritten for it.
+    [Fact]
+    public void Execute_firstGpuFailsAndSecondPasses_triesEachWiredOnItsOwnAndKeepsTheSecond()
+    {
+        WriteHandoff();
+        WireGpus(Amd, Intel);
+        ProbeReports(Failed(Amd), Passed(Intel));
+
+        Execute();
+
+        _probedWhileWiredTo.Should().Equal($"{Amd.Path} wired to 226:128", $"{Intel.Path} wired to 226:129");
+        _configuration.Received(2).BeginGeneration(Arg.Any<InstallationConfig>(), _directory);
+        _context.Config.EnvironmentValues[VideoEncodingEnvironment.DeviceKey].Should().Be(Intel.Path);
+        _context.Config.EnvironmentValues[VideoEncodingEnvironment.GroupKey].Should().Be("105");
+        _context.Config.EnvironmentValues[VideoEncodingEnvironment.DeviceNumberKey].Should().Be("226:129");
+        _context.VideoEncodingOutcome.Should().Be("On the GPU: Mesa driver for Intel");
+    }
+
+    // A retry after a rewire to a later GPU failed starts with the files wired to that GPU, so the
+    // first candidate is wired back before it is tried.
+    [Fact]
+    public void Execute_settingsWiredToALaterCandidate_rewiresTheFirstBeforeTryingIt()
+    {
+        WriteHandoff();
+        WireGpus(Intel);
+        _context.Resources.VideoGpus = [Amd, Intel];
+        ProbeReports(Passed(Amd));
+
+        Execute();
+
+        _probedWhileWiredTo.Should().Equal($"{Amd.Path} wired to 226:128");
+        _configuration.Received(2).BeginGeneration(Arg.Any<InstallationConfig>(), _directory);
+        _context.Config.EnvironmentValues[VideoEncodingEnvironment.DeviceKey].Should().Be(Amd.Path);
+        _context.VideoEncodingOutcome.Should().Be("On the GPU: Mesa driver for AMD");
+    }
+
+    [Fact]
+    public void Execute_everyGpuFails_endsOnTheCpu()
+    {
+        WriteHandoff();
+        WireGpus(Amd, Intel);
+        ProbeReports(Failed(Amd), Failed(Intel));
+
+        Execute();
+
+        _probedWhileWiredTo.Should().HaveCount(2);
+        _configuration.Received(3).BeginGeneration(Arg.Any<InstallationConfig>(), _directory);
+        _context.Config.EnvironmentValues[VideoEncodingEnvironment.ModeKey].Should().Be("Cpu");
+        _context.VideoEncodingOutcome.Should().Be("On the CPU, because no GPU could encode");
+    }
+
+    [Fact]
+    public void Execute_gpuTestCannotRun_fallsBackToTheCpuWithTheReason()
+    {
+        WriteHandoff();
+        WireGpus(Amd);
+        _docker.ProbeVideoGpus(Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<Action<string>?>())
+            .Returns(new ProcessResult(1, string.Empty, "Error response from daemon: no such image\n"));
+
+        Execute();
+
+        _context.Config.EnvironmentValues[VideoEncodingEnvironment.ModeKey].Should().Be("Cpu");
+        _context.VideoEncodingOutcome.Should().Be("On the CPU, because the test did not run: Error response from daemon: no such image");
+    }
+
+    // A test that never ran says nothing about the GPU, so going back to the review wires it
+    // again instead of reporting that no GPU was found.
+    [Fact]
+    public void Execute_gpuTestCannotRun_keepsTheGpuForALaterAttempt()
+    {
+        WriteHandoff();
+        WireGpus(Amd);
+        _docker.ProbeVideoGpus(Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<Action<string>?>())
+            .Returns(new ProcessResult(1, string.Empty, "Error response from daemon: no such image\n"));
+
+        Execute();
+
+        _context.Resources.VideoGpus.Should().Equal(Amd);
+        _context.Resources.VideoGpuUnavailableReason.Should().BeNull();
+        VideoEncodingEnvironment.Plan(_context.Resources).Should().StartWith("On the AMD GPU");
+    }
+
+    // Compose prints its own progress on stderr, which says nothing about why the probe failed.
+    [Fact]
+    public void Execute_gpuTestEndsInComposeProgress_reportsTheExitCodeInstead()
+    {
+        WriteHandoff();
+        WireGpus(Amd);
+        _docker.ProbeVideoGpus(Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<Action<string>?>())
+            .Returns(new ProcessResult(139, string.Empty,
+                " Container alexandria-transpilation-worker-run-1a2b Creating\n Container alexandria-transpilation-worker-run-1a2b Created\n"));
+
+        Execute();
+
+        _context.VideoEncodingOutcome.Should().Be("On the CPU, because the test did not run: the worker exited with code 139 without a report");
+    }
+
+    [Fact]
+    public void Execute_noGpuWired_runsNoGpuTest()
+    {
+        WriteHandoff();
+        WireGpus();
+
+        Execute();
+
+        _events.Should().NotContain(VideoGpuTest.StageLabel);
+        _docker.DidNotReceive().ProbeVideoGpus(Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<Action<string>?>());
+    }
+
+    private Dictionary<string, string> Limits() => _context.Config.EnvironmentValues
+        .Where(pair => pair.Key.StartsWith(ResourceBudget.EnvironmentPrefix, StringComparison.Ordinal))
+        .ToDictionary();
 
     private void WriteHandoff(string generation = "synthetic-generation")
     {

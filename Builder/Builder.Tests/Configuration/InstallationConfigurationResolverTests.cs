@@ -7,6 +7,7 @@ using Builder.Configuration;
 using Builder.Credentials;
 using Builder.Docker;
 using Builder.Network;
+using Builder.SystemCheck;
 using Builder.Workflow;
 using NSubstitute;
 
@@ -41,6 +42,18 @@ public class InstallationConfigurationResolverTests : IDisposable
         resolved.InstallerVersion.Should().Be(BuilderVersion.Current);
     }
 
+    // A review after a deploy chooses the encoder again, so the earlier GPU test must not be shown.
+    [Fact]
+    public void Resolve_afterAnEarlierGpuTest_forgetsItsOutcome()
+    {
+        var context = CreateContext();
+        context.VideoEncodingOutcome = "On the GPU: Mesa driver for AMD";
+
+        InstallationConfigurationResolver.Resolve(context, _credentials);
+
+        context.VideoEncodingOutcome.Should().BeNull();
+    }
+
     [Fact]
     public void Resolve_freshReviewRepeated_retainsIdentityAndSecretsAndUpdatesDerivedFeatureChoice()
     {
@@ -57,6 +70,26 @@ public class InstallationConfigurationResolverTests : IDisposable
         second.EnvironmentValues["LYRICS_ENABLED"].Should().Be("true");
         _credentials.Received(1).GenerateAllCredentials(Arg.Any<FeatureSelection>());
         Directory.Exists(context.InstallPath).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Resolve_measuredMachine_writesLimitsForRunningServicesAndDropsThoseOfRemovedFeatures()
+    {
+        var context = CreateContext();
+        context.Resources = new SystemResources { CpuCores = 4, TotalMemoryMb = 65536 };
+        context.Features.SetEnabled(FeatureCatalog.Lyrics.Id, true);
+        context.Features.SetEnabled(FeatureCatalog.AdaptiveStreaming.Id, true);
+
+        var first = InstallationConfigurationResolver.Resolve(context, _credentials);
+        context.Features.SetEnabled(FeatureCatalog.Lyrics.Id, false);
+        var second = InstallationConfigurationResolver.Resolve(context, _credentials);
+
+        first.EnvironmentValues["LIMIT_LYRICS_WORKER_MEMORY"].Should().Be("512M");
+        first.EnvironmentValues["LIMIT_TRANSPILATION_WORKER_CPUS"].Should().Be("3");
+        first.EnvironmentValues["LIMIT_POSTGRES_MEMORY"].Should().Be("512M");
+        second.EnvironmentValues.Should().NotContainKey("LIMIT_LYRICS_WORKER_MEMORY")
+            .And.NotContainKey("LIMIT_LYRICS_WORKER_CPUS")
+            .And.ContainKey("LIMIT_MEDIA_WORKER_MEMORY");
     }
 
     [Fact]

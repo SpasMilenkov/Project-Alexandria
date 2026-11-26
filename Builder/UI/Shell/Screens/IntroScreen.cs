@@ -16,9 +16,13 @@ public static class IntroScreen
     private const string ChangeLook = "Change the installer's look";
     private const string Production = "Production deployment (coming soon)";
 
+    // Reached with its key only, so it is not one of the listed choices
+    private const string GpuCheck = "Check the video GPU";
+
     public static ScreenOutcome Run(
         Shell shell,
-        Func<string, bool>? saveTheme = null)
+        Func<string, bool>? saveTheme = null,
+        Action<Shell>? checkVideoGpu = null)
     {
         while (true)
         {
@@ -33,7 +37,8 @@ public static class IntroScreen
                 "What would you like to do?",
                 [SetUp, ChangeLook, Production],
                 c => c,
-                detailFor: Describe);
+                detailFor: Describe,
+                shortcut: checkVideoGpu is null ? null : (ConsoleKey.D, "video GPU check", GpuCheck));
 
             // Esc on the entry screen has nowhere to go back to; re-render
             if (choice is null)
@@ -46,6 +51,10 @@ public static class IntroScreen
             {
                 case SetUp:
                     return ScreenOutcome.Continue;
+
+                case GpuCheck:
+                    checkVideoGpu!(shell);
+                    break;
 
                 case ChangeLook:
                     PickTheme(shell, saveTheme ?? UiPreferencesStore.Save);

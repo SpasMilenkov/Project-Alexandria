@@ -67,9 +67,13 @@
         max-size: "10m"
         max-file: "5"
 
+    # Swap capped at the memory cap, so hitting it restarts the container instead of
+    # pushing the host into swap.
+    memswap_limit: ${LIMIT_DOCUMENT_WORKER_MEMORY:-1024M}
     deploy:
       resources:
         limits:
-          memory: ${DOCUMENT_WORKER_MEMORY_LIMIT:-1G}
+          cpus: "${LIMIT_DOCUMENT_WORKER_CPUS:-2}"
+          memory: ${LIMIT_DOCUMENT_WORKER_MEMORY:-1024M}
         reservations:
-          memory: ${DOCUMENT_WORKER_MEMORY_RESERVATION:-256M}
+          memory: 256M

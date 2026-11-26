@@ -1,4 +1,5 @@
 using Alexandria.Common;
+using Alexandria.Common.Processes;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files.Streaming;
@@ -19,6 +20,9 @@ public partial class AudioTranspilationService(
         [AudioRung.Kbps256] = 256,
         [AudioRung.Kbps320] = 320
     };
+
+    // Reading stream headers is quick; a source that takes longer is not worth transcoding.
+    private static readonly TimeSpan DurationProbeTimeout = TimeSpan.FromMinutes(1);
 
     /// <inheritdoc/> 
     public async Task<TranspilationOutput> TranspileAsync(
@@ -56,7 +60,7 @@ public partial class AudioTranspilationService(
     {
         var manifestPath = Path.Combine(dashDir, "manifest.mpd");
 
-        var args = new List<string> { "-i", $"\"{inputPath}\"", "-vn" };
+        var args = new List<string> { FfmpegThreads.Input, "-i", $"\"{inputPath}\"", "-vn" };
 
         for (var i = 0; i < lanes.Count; i++)
         {
@@ -67,15 +71,34 @@ public partial class AudioTranspilationService(
             "-f", "dash",
             "-seg_duration", "6",
             "-adaptation_sets", "\"id=0,streams=a\"",
+            FfmpegThreads.Output,
             $"\"{manifestPath}\""
         ]);
 
+        var duration = await ProbeDurationAsync(inputPath, ct);
+
         LogDashPassStarting(logger, inputPath);
         await TranscodeProcess.RunFfmpegAsync(
-            new TranscodeRequest(jobId, inputPath, string.Join(" ", args), "audio DASH", manifestPath),
+            new TranscodeRequest(jobId, inputPath, string.Join(" ", args), "audio DASH", manifestPath, duration),
+            new TranscodeBudget(TranscodeProcess.MaxDuration),
             unitOfWork,
             logger,
             ct);
         LogDashPassCompleted(logger, manifestPath);
+    }
+
+    // The length only feeds the progress bar, so a source ffprobe cannot time is still
+    // transcoded, without progress.
+    private async Task<TimeSpan?> ProbeDurationAsync(string inputPath, CancellationToken ct)
+    {
+        var result = await ExternalProcess.RunAsync(
+            "ffprobe", MediaDuration.ProbeArguments(inputPath), DurationProbeTimeout, logger, ct);
+
+        var duration = result.ExitCode == 0 ? MediaDuration.Parse(result.StdOut) : null;
+
+        if (duration is null)
+            LogDurationUnknown(logger, inputPath, result.ExitCode);
+
+        return duration;
     }
 }

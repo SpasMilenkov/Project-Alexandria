@@ -28,6 +28,13 @@ public interface IJobRepository : IRepository<Job>
         string? errorDetail = null,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Records how far a Processing job has come and stamps <c>UpdatedAt</c>, which also serves
+    /// as its heartbeat. Leaves the status and <c>StartedAt</c> alone, and does nothing once the
+    /// job has left Processing.
+    /// </summary>
+    Task UpdateProgressAsync(Guid jobId, int percent, CancellationToken ct = default);
+
     Task ClearErrorAsync(Guid jobId, CancellationToken ct = default);
 
     /// <summary>

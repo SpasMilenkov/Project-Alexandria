@@ -116,6 +116,14 @@ public class JobRepository(AlexandriaDbContext context) : IJobRepository
                     .SetProperty(j => j.UpdatedAt, DateTime.UtcNow),
                 ct);
 
+    public async Task UpdateProgressAsync(Guid jobId, int percent, CancellationToken ct = default)
+        => await _jobs
+            .Where(j => j.Id == jobId && j.Status == JobStatus.Processing)
+            .ExecuteUpdateAsync(s => s
+                    .SetProperty(j => j.ProgressPercent, percent)
+                    .SetProperty(j => j.UpdatedAt, DateTime.UtcNow),
+                ct);
+
     public async Task ClearErrorAsync(Guid jobId, CancellationToken ct = default)
         => await _jobs
             .Where(j => j.Id == jobId)

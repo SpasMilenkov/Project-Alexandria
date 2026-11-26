@@ -14,7 +14,7 @@ public static class TargetDirScreen
         var context = shell.Context;
         var repoRoot = RepoRootOverride is not null
             ? RepoRootOverride()
-            : DetectRepoRoot(context.LaunchDirectory);
+            : PathResolver.FindSourceRoot(context.LaunchDirectory);
 
         IRenderable Header(string note, params (string Label, bool Ok, string? Detail)[] chosen)
         {
@@ -147,26 +147,5 @@ public static class TargetDirScreen
         var parent = Path.GetDirectoryName(sourceRoot);
 
         return parent is null ? sourceRoot : Path.Combine(parent, "alexandria");
-    }
-
-    private static string? DetectRepoRoot(string launchDirectory)
-    {
-        foreach (var start in new[] { AppContext.BaseDirectory, launchDirectory })
-        {
-            var directory = new DirectoryInfo(start);
-
-            for (var depth = 0; depth < 10 && directory is not null; depth++)
-            {
-                if (File.Exists(Path.Combine(directory.FullName, "Backend", "Alexandria.Api", "Dockerfile")) &&
-                    File.Exists(Path.Combine(directory.FullName, "Frontend", "Dockerfile")))
-                {
-                    return directory.FullName;
-                }
-
-                directory = directory.Parent;
-            }
-        }
-
-        return null;
     }
 }

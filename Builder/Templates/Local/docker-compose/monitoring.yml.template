@@ -22,10 +22,14 @@
       - data-net
       - observability-net
 
+    # Swap capped at the memory cap, so hitting it restarts the container instead of
+    # pushing the host into swap.
+    memswap_limit: ${LIMIT_PROMETHEUS_MEMORY:-384M}
     deploy:
       resources:
         limits:
-          memory: 384M
+          cpus: "${LIMIT_PROMETHEUS_CPUS:-1}"
+          memory: ${LIMIT_PROMETHEUS_MEMORY:-384M}
         reservations:
           memory: 128M
 
@@ -83,10 +87,12 @@
       retries: 3
       start_period: 20s
 
+    memswap_limit: ${LIMIT_GRAFANA_MEMORY:-128M}
     deploy:
       resources:
         limits:
-          memory: 128M
+          cpus: "${LIMIT_GRAFANA_CPUS:-0.5}"
+          memory: ${LIMIT_GRAFANA_MEMORY:-128M}
         reservations:
           memory: 64M
 
@@ -111,10 +117,12 @@
     networks:
       - observability-net
 
+    memswap_limit: ${LIMIT_CADVISOR_MEMORY:-160M}
     deploy:
       resources:
         limits:
-          memory: 150M
+          cpus: "${LIMIT_CADVISOR_CPUS:-0.5}"
+          memory: ${LIMIT_CADVISOR_MEMORY:-160M}
         reservations:
           memory: 64M
 
@@ -142,10 +150,12 @@
       - data-net
       - observability-net
 
+    memswap_limit: ${LIMIT_POSTGRES_EXPORTER_MEMORY:-64M}
     deploy:
       resources:
         limits:
-          memory: 64M
+          cpus: "${LIMIT_POSTGRES_EXPORTER_CPUS:-0.5}"
+          memory: ${LIMIT_POSTGRES_EXPORTER_MEMORY:-64M}
         reservations:
           memory: 32M
 
@@ -186,10 +196,12 @@
     networks:
       - observability-net
 
+    memswap_limit: ${LIMIT_ALLOY_MEMORY:-128M}
     deploy:
       resources:
         limits:
-          memory: 128M
+          cpus: "${LIMIT_ALLOY_CPUS:-0.5}"
+          memory: ${LIMIT_ALLOY_MEMORY:-128M}
         reservations:
           memory: 64M
 
@@ -212,10 +224,12 @@
     networks:
       - observability-net
 
+    memswap_limit: ${LIMIT_LOKI_MEMORY:-256M}
     deploy:
       resources:
         limits:
-          memory: 256M
+          cpus: "${LIMIT_LOKI_CPUS:-0.5}"
+          memory: ${LIMIT_LOKI_MEMORY:-256M}
         reservations:
           memory: 128M
 

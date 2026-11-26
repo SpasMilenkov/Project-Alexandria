@@ -208,4 +208,48 @@ public class ExternalProcessTests
 
         await act.Should().ThrowAsync<Win32Exception>();
     }
+
+    [Fact]
+    public async Task RunAsync_withLineCallback_handsOverEveryLineInsteadOfCollectingThem()
+    {
+        RequireLinux();
+        var lines = new List<string>();
+
+        var result = await ExternalProcess.RunAsync(
+            "sh",
+            "-c \"printf 'first\\r\\nsecond\\n\\nlast without newline'; echo on stderr >&2\"",
+            GenerousTimeout,
+            lines.Add,
+            NullLogger.Instance,
+            TestContext.Current.CancellationToken);
+
+        lines.Should().Equal("first", "second", "", "last without newline");
+        result.StdOut.Should().BeEmpty();
+        result.StdErrTail.Should().Contain("on stderr");
+    }
+
+    // A progress line has to reach the caller while the tool is still running, not at exit.
+    [Fact]
+    public async Task RunAsync_withLineCallback_handsLinesOverAsTheyArrive()
+    {
+        RequireLinux();
+        var firstLineSeen = new TaskCompletionSource<DateTime>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var run = ExternalProcess.RunAsync(
+            "sh",
+            "-c \"echo early; sleep 1; echo late\"",
+            GenerousTimeout,
+            line =>
+            {
+                if (line == "early")
+                    firstLineSeen.TrySetResult(DateTime.UtcNow);
+            },
+            NullLogger.Instance,
+            TestContext.Current.CancellationToken);
+
+        var seenAt = await firstLineSeen.Task.WaitAsync(GenerousTimeout, TestContext.Current.CancellationToken);
+        await run;
+
+        (DateTime.UtcNow - seenAt).Should().BeGreaterThan(TimeSpan.FromMilliseconds(500));
+    }
 }
