@@ -88,7 +88,8 @@ public class VaapiEncoderProbeTests
             var result = await sut.ProbeAsync(device, TestContext.Current.CancellationToken);
 
             result.Usable.Should().BeFalse();
-            result.Detail.Should().Be($"No permission to open {device}. The container needs the group that owns it on the host.");
+            result.Detail.Should().Be($"No permission to open {device}. The container needs the group that owns it on the host " +
+                                      "and a device rule that allows it.");
         }
         finally
         {

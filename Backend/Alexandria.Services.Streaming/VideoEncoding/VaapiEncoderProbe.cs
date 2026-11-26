@@ -23,8 +23,8 @@ public sealed partial class VaapiEncoderProbe(ILogger<VaapiEncoderProbe> logger)
         if (!File.Exists(device))
             return new GpuProbeResult(device, false, null, $"{device} does not exist in this container.");
 
-        // ffmpeg reports a node it may not open as "Invalid argument", which hides the usual cause:
-        // the container is missing the group that owns the device on the host.
+        // ffmpeg reports a node it may not open as "Invalid argument", which hides the usual causes:
+        // the container lacks the group that owns the device, or a rule allowing the device itself.
         if (AccessProblem(device) is { } problem)
             return new GpuProbeResult(device, false, null, problem);
 
@@ -54,7 +54,8 @@ public sealed partial class VaapiEncoderProbe(ILogger<VaapiEncoderProbe> logger)
         }
         catch (UnauthorizedAccessException)
         {
-            return $"No permission to open {device}. The container needs the group that owns it on the host.";
+            return $"No permission to open {device}. The container needs the group that owns it on the host " +
+                   "and a device rule that allows it.";
         }
         catch (IOException ex)
         {
