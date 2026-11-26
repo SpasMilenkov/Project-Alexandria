@@ -48,6 +48,70 @@ public sealed class DockerResourceInspectionTests
         resources.TotalMemoryMb.Should().Be(8192);
     }
 
+    // The daemon in Docker Desktop's VM cannot open the host's render nodes, so a GPU found on the
+    // host must not be wired or tested.
+    [Fact]
+    public void PopulateDockerResources_desktopVm_dropsHostGpusAndSaysWhy()
+    {
+        var resources = new SystemResources
+        {
+            VideoGpus = [new RenderNode("/dev/dri/renderD128", "0000:00:02.0", "Intel", "226:128", 105)],
+        };
+        var info = LinuxInfo.Replace("\"Linux\"", "\"Docker Desktop\"");
+
+        SystemChecker.PopulateDockerResources(resources, info, linuxHost: true, _ => 1);
+
+        resources.VideoGpus.Should().BeEmpty();
+        resources.VideoGpuUnavailableReason.Should().Contain("inside a VM");
+    }
+
+    // Without the host's groups mapped into the container the worker can never open the node.
+    [Theory]
+    [InlineData("name=rootless")]
+    [InlineData("name=userns")]
+    public void PopulateDockerResources_userNamespaceDaemon_dropsHostGpusAndSaysWhy(string option)
+    {
+        var resources = new SystemResources
+        {
+            VideoGpus = [new RenderNode("/dev/dri/renderD128", "0000:00:02.0", "Intel", "226:128", 105)],
+        };
+        var info = LinuxInfo.Replace("}", $",\"SecurityOptions\":[\"name=seccomp,profile=builtin\",\"{option}\"]}}");
+
+        SystemChecker.PopulateDockerResources(resources, info, linuxHost: true, _ => 1);
+
+        resources.VideoGpus.Should().BeEmpty();
+        resources.VideoGpuUnavailableReason.Should().Contain("rootless or with user namespace remapping");
+        resources.DockerAvailableDiskMb.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void PopulateDockerResources_rootfulSecurityOptions_keepHostGpus()
+    {
+        var resources = new SystemResources
+        {
+            VideoGpus = [new RenderNode("/dev/dri/renderD128", "0000:00:02.0", "Intel", "226:128", 105)],
+        };
+        var info = LinuxInfo.Replace("}", ",\"SecurityOptions\":[\"name=apparmor\",\"name=seccomp,profile=builtin\",\"name=cgroupns\"]}");
+
+        SystemChecker.PopulateDockerResources(resources, info, linuxHost: true, _ => 1);
+
+        resources.VideoGpus.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void PopulateDockerResources_localLinux_keepsHostGpus()
+    {
+        var resources = new SystemResources
+        {
+            VideoGpus = [new RenderNode("/dev/dri/renderD128", "0000:00:02.0", "Intel", "226:128", 105)],
+        };
+
+        SystemChecker.PopulateDockerResources(resources, LinuxInfo, linuxHost: true, _ => 1);
+
+        resources.VideoGpus.Should().ContainSingle();
+        resources.VideoGpuUnavailableReason.Should().BeNull();
+    }
+
     [Fact]
     public void PopulateDockerResources_dataPathInaccessible_reportsUnknown()
     {

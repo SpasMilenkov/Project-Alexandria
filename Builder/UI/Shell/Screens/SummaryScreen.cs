@@ -1,6 +1,7 @@
 using Builder.AudioModels;
 using Builder.Catalog;
 using Builder.Certificates;
+using Builder.Configuration;
 using Builder.Storage;
 using Builder.SystemCheck;
 using Builder.UI.Shell.Screens.Components;
@@ -150,6 +151,11 @@ public static class SummaryScreen
 
         var allocations = ResourceBudget.Plan(capabilities, context.Resources);
         facts.Add(("Resource limits", LimitsFact(allocations, context.Resources)));
+
+        if (VideoEncodingEnvironment.Applies(capabilities))
+        {
+            facts.Add(("Video encoding", VideoEncodingEnvironment.Plan(context.Resources)));
+        }
 
         foreach (var assets in capabilities.ModelAssets)
         {

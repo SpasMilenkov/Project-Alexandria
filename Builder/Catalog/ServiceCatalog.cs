@@ -17,6 +17,11 @@ public sealed class ServiceInfo
 
     // Long CPU-bound jobs; together they must leave the cores reserved for the host free.
     public bool HeavyCpu { get; init; }
+
+    // The CPU cap of a heavy job whose main work moves to the GPU when the installation encodes
+    // video on one; zero for jobs that stay on the CPU. Decoding, audio and any fallback to the
+    // CPU encoder still run under it, so it keeps counting against the reserved cores.
+    public double GpuCpus { get; init; }
     public IReadOnlyList<string> RequiresFeatures { get; init; } = [];
     public IReadOnlyList<string> RequiresAllFeatures { get; init; } = [];
     public bool AlwaysEnabled { get; init; }
@@ -61,7 +66,7 @@ public static class ServiceCatalog
         string[]? networks = null, string[]? extraTemplates = null, bool infrastructure = false,
         bool oneShot = false, long headroomMb = 0, ModelAssetRequirement[]? modelAssets = null,
         string[]? allFeatures = null, bool alwaysEnabled = false, double cpus = 1,
-        long minimumMemoryMb = 0, bool heavyCpu = false) => new()
+        long minimumMemoryMb = 0, bool heavyCpu = false, double gpuCpus = 0) => new()
     {
         Id = id,
         Name = name,
@@ -71,6 +76,7 @@ public static class ServiceCatalog
         MinimumMemoryMb = minimumMemoryMb,
         Cpus = cpus,
         HeavyCpu = heavyCpu,
+        GpuCpus = gpuCpus,
         ComposeTemplate = template,
         Description = description,
         RequiresFeatures = features ?? [],
@@ -135,7 +141,8 @@ public static class ServiceCatalog
         S("transpilation-worker", "Transpilation worker", "Adaptive streaming", 1024,
             "docker-compose/transpilation-worker.yml.template", "Converts large media so it starts playing instantly anywhere.",
             features: [FeatureCatalog.AdaptiveStreaming.Id], sourceFiles: ["Backend/Alexandria.Workers.MediaTranspilation/Dockerfile"],
-            volumes: ["transpilation_worker_scratch"], networks: ["data-net"], cpus: 4, minimumMemoryMb: 512, heavyCpu: true),
+            volumes: ["transpilation_worker_scratch"], networks: ["data-net"], cpus: 4, minimumMemoryMb: 512, heavyCpu: true,
+            gpuCpus: 2),
         S("media-metadata-worker", "Tagging coordinator", "Audio analysis support", 1024,
             "docker-compose/media-metadata-worker.yml.template", "Organizes the tag analysis pipeline after each upload.",
             features: [FeatureCatalog.AudioTaggingFast.Id, FeatureCatalog.AudioTaggingDeep.Id],

@@ -165,6 +165,54 @@ public sealed class ResourceBudgetTests
         }
     }
 
+    private static SystemResources MachineWithGpu(long memoryMb, int cores)
+    {
+        var resources = Machine(memoryMb, cores);
+        resources.VideoGpus = [new RenderNode("/dev/dri/renderD128", "0000:04:00.0", "AMD", "226:128", 110)];
+
+        return resources;
+    }
+
+    // On a small machine the heavy jobs split the usable cores; a transcoder on the GPU asks for
+    // fewer, so the others keep more, and its cap still counts so a fallback to the CPU encoder
+    // cannot push the heavy jobs past the host's reserve.
+    [Fact]
+    public void Plan_videoOnGpu_shrinksTheTranscoderAndKeepsEveryHeavyJobInTheShare()
+    {
+        var cpuOnly = Plan(Everything(), Machine(32768, 6));
+        var withGpu = Plan(Everything(), MachineWithGpu(32768, 6));
+
+        withGpu["transpilation-worker"].Cpus.Should().BeLessThanOrEqualTo(Service("transpilation-worker").GpuCpus);
+        withGpu["essentia-maest-worker"].Cpus.Should().BeGreaterThan(cpuOnly["essentia-maest-worker"].Cpus);
+        HeavyCores(withGpu).Should().BeLessThanOrEqualTo(ResourceBudget.UsableCpuCores(6));
+    }
+
+    [Fact]
+    public void Plan_videoOnGpuWithRoom_givesTheTranscoderItsGpuCap()
+    {
+        var plan = Plan(Everything(), MachineWithGpu(32768, 16));
+
+        plan["transpilation-worker"].Cpus.Should().Be(Service("transpilation-worker").GpuCpus);
+        plan["essentia-maest-worker"].Cpus.Should().Be(4);
+    }
+
+    [Fact]
+    public void ApplyEnvironment_replacesEveryLimitAndDropsThoseOfUnselectedServices()
+    {
+        var values = new Dictionary<string, string>
+        {
+            ["LIMIT_GONE_WORKER_MEMORY"] = "512M",
+            [ResourceBudget.MemoryKey("transpilation-worker")] = "1M",
+            ["UNRELATED"] = "kept",
+        };
+
+        ResourceBudget.ApplyEnvironment(values, ServiceCatalog.Resolve(Everything()), Machine(32768, 16));
+
+        values.Should().NotContainKey("LIMIT_GONE_WORKER_MEMORY");
+        values[ResourceBudget.MemoryKey("transpilation-worker")].Should().Be("1024M");
+        values["UNRELATED"].Should().Be("kept");
+    }
+
     private static double HeavyCores(Dictionary<string, ServiceAllocation> plan) =>
         plan.Values.Where(allocation => Service(allocation.ServiceId).HeavyCpu).Sum(allocation => allocation.Cpus);
 }

@@ -42,6 +42,18 @@ public class InstallationConfigurationResolverTests : IDisposable
         resolved.InstallerVersion.Should().Be(BuilderVersion.Current);
     }
 
+    // A review after a deploy chooses the encoder again, so the earlier GPU test must not be shown.
+    [Fact]
+    public void Resolve_afterAnEarlierGpuTest_forgetsItsOutcome()
+    {
+        var context = CreateContext();
+        context.VideoEncodingOutcome = "On the GPU: Mesa driver for AMD";
+
+        InstallationConfigurationResolver.Resolve(context, _credentials);
+
+        context.VideoEncodingOutcome.Should().BeNull();
+    }
+
     [Fact]
     public void Resolve_freshReviewRepeated_retainsIdentityAndSecretsAndUpdatesDerivedFeatureChoice()
     {

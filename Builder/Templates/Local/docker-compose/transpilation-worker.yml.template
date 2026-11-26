@@ -9,6 +9,8 @@
 
     volumes:
       - transpilation_worker_scratch:/tmp/worker-scratch
+{{TRANSPILATION_GPU_VOLUME}}
+{{TRANSPILATION_GPU_ACCESS}}
 
     environment:
       Serilog__MinimumLevel__Default: Information
@@ -41,6 +43,8 @@
       TMPDIR: /tmp/worker-scratch
       RabbitMQ__Consumer__QueueName: transpilation-queue
       RabbitMQ__VirtualHost: ${RABBITMQ_VHOST:-alexandria}
+      VideoEncoding__Mode: ${VIDEO_ENCODING_MODE:-Cpu}
+      VideoEncoding__Device: ${VIDEO_GPU_DEVICE:-/dev/dri/renderD128}
 
     depends_on:
       postgres:

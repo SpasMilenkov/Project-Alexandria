@@ -102,6 +102,7 @@ public class MainFlow
                 Context.OwnsHttpRedirectPort = inspection.HasEnvironment &&
                                                Context.Config.Ports.ContainsKey(PublicEndpoint.HttpRedirectPortKey);
                 Context.InspectedTarget = target;
+                Context.InstalledVideoGpu = inspection.ExistingEnvironment.GetValueOrDefault(VideoEncodingEnvironment.DeviceKey);
 
                 if (string.IsNullOrEmpty(Context.Config.PublicEndpoint.Host) &&
                     Uri.TryCreate(inspection.ExistingEnvironment.GetValueOrDefault("BASE_URL"), UriKind.Absolute, out var existingOrigin) &&

@@ -36,7 +36,7 @@ public static class ResourceBudget
     {
         var services = capabilities.Services.Where(service => !service.OneShot).ToArray();
         var memory = PlanMemory(services, ResourceCalculator.MemoryLimitMb(resources));
-        var cpus = PlanCpus(services, ResourceCalculator.CpuLimit(resources));
+        var cpus = PlanCpus(services, ResourceCalculator.CpuLimit(resources), resources.VideoGpus.Count > 0);
 
         return services.Select(service => new ServiceAllocation
         {
@@ -57,6 +57,23 @@ public static class ResourceBudget
         }
 
         return values;
+    }
+
+    // Replaces every limit in an installation's environment, dropping those of services no
+    // longer selected, so the caps always match the current machine and selection.
+    public static void ApplyEnvironment(Dictionary<string, string> values, ResolvedCapabilities capabilities, SystemResources resources)
+    {
+        var limits = EnvironmentValues(Plan(capabilities, resources));
+
+        foreach (var key in values.Keys.Where(key => key.StartsWith(EnvironmentPrefix, StringComparison.Ordinal) && !limits.ContainsKey(key)).ToArray())
+        {
+            values.Remove(key);
+        }
+
+        foreach (var (key, value) in limits)
+        {
+            values[key] = value;
+        }
     }
 
     public static string MemoryKey(string serviceId) => EnvironmentPrefix + KeyName(serviceId) + "_MEMORY";
@@ -94,13 +111,14 @@ public static class ResourceBudget
         return caps;
     }
 
-    private static Dictionary<string, double> PlanCpus(IReadOnlyList<ServiceInfo> services, int cores)
+    private static Dictionary<string, double> PlanCpus(IReadOnlyList<ServiceInfo> services, int cores, bool videoOnGpu)
     {
         if (cores <= 0)
             return services.ToDictionary(service => service.Id, service => service.Cpus, StringComparer.Ordinal);
 
         var usable = UsableCpuCores(cores);
-        var cpus = services.ToDictionary(service => service.Id, service => Math.Min(service.Cpus, usable), StringComparer.Ordinal);
+        var cpus = services.ToDictionary(service => service.Id, service => Math.Min(CpuCap(service, videoOnGpu), usable),
+            StringComparer.Ordinal);
         var heavy = services.Where(service => service.HeavyCpu).ToArray();
         var heavyTotal = heavy.Sum(service => cpus[service.Id]);
 
@@ -116,6 +134,11 @@ public static class ResourceBudget
 
         return cpus;
     }
+
+    // A job on the GPU needs fewer cores, which leaves the other heavy jobs a larger share; a
+    // fallback to the CPU encoder then runs slower instead of past the host's reserve.
+    private static double CpuCap(ServiceInfo service, bool videoOnGpu) =>
+        videoOnGpu && service.GpuCpus > 0 ? service.GpuCpus : service.Cpus;
 
     private static bool IsShrinkable(ServiceInfo service) =>
         service.MinimumMemoryMb > 0 && service.MinimumMemoryMb < service.MemoryMb;

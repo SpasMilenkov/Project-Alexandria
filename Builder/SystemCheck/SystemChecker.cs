@@ -46,6 +46,7 @@ public class SystemChecker : ISystemChecker
     internal Func<OSPlatform> DetectOperatingSystem { get; init; } = GetRuntimeOperatingSystem;
     internal Func<Architecture> DetectArchitecture { get; init; } = () => RuntimeInformation.OSArchitecture;
     internal Func<bool> DetectGlibc { get; init; } = HasGlibc;
+    internal Func<IReadOnlyList<RenderNode>>? DetectVideoGpus { get; init; }
 
     private string _lastFailure = string.Empty;
 
@@ -250,6 +251,15 @@ public class SystemChecker : ISystemChecker
             resources.AvailableMemoryMb = 0;
         }
 
+        try
+        {
+            resources.VideoGpus = (DetectVideoGpus ?? (() => RenderNodeDetector.Detect(GroupOf)))();
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            resources.VideoGpuDetectionError = "GPUs could not be listed: " + exception.Message;
+        }
+
         var contextError = GetDockerContextError();
 
         if (contextError is not null)
@@ -258,7 +268,7 @@ public class SystemChecker : ISystemChecker
             return resources;
         }
 
-        const string format = "{\"DockerRootDir\":{{json .DockerRootDir}},\"OperatingSystem\":{{json .OperatingSystem}},\"NCPU\":{{.NCPU}},\"MemTotal\":{{.MemTotal}}}";
+        const string format = "{\"DockerRootDir\":{{json .DockerRootDir}},\"OperatingSystem\":{{json .OperatingSystem}},\"NCPU\":{{.NCPU}},\"MemTotal\":{{.MemTotal}},\"SecurityOptions\":{{json .SecurityOptions}}}";
 
         if (ExecuteCommand("docker", ["info", "--format", format], out var dockerInfo))
         {
@@ -300,8 +310,25 @@ public class SystemChecker : ISystemChecker
 
             if (!linuxHost || operatingSystem.Contains("Docker Desktop", StringComparison.OrdinalIgnoreCase))
             {
+                // The host's render nodes are invisible to a daemon inside a VM, so wiring one
+                // would only cost a GPU test that cannot pass.
+                if (resources.VideoGpus.Count > 0)
+                {
+                    resources.VideoGpus = [];
+                    resources.VideoGpuUnavailableReason = "Docker runs inside a VM that cannot reach this machine's GPU";
+                }
+
                 resources.DiskSpaceDetails = "Docker stores its data inside a VM. Check the VM's available disk space in Docker Desktop; host free space is not the Docker data filesystem.";
                 return;
+            }
+
+            // A rootless or remapped daemon runs containers in a user namespace that does not map
+            // the host's groups, so the worker cannot be given the group that owns the GPU.
+            if (resources.VideoGpus.Count > 0 && RunsInUserNamespace(root))
+            {
+                resources.VideoGpus = [];
+                resources.VideoGpuUnavailableReason =
+                    "Docker runs rootless or with user namespace remapping, so the worker cannot be given the GPU's group";
             }
 
             if (!Path.IsPathFullyQualified(resources.DockerDataDirectory))
@@ -327,6 +354,18 @@ public class SystemChecker : ISystemChecker
         {
             resources.DiskSpaceDetails = "Docker returned unsupported resource information; its data filesystem free space is unknown.";
         }
+    }
+
+    // Docker lists these as "name=rootless" and "name=userns", other options as
+    // "name=seccomp,profile=builtin", so only the part before the first comma is compared.
+    private static bool RunsInUserNamespace(JsonElement root)
+    {
+        if (!root.TryGetProperty("SecurityOptions", out var options) || options.ValueKind != JsonValueKind.Array) return false;
+
+        return options.EnumerateArray()
+            .Where(option => option.ValueKind == JsonValueKind.String)
+            .Select(option => option.GetString()!.Split(',')[0])
+            .Any(name => name is "name=rootless" or "name=userns");
     }
 
     private long? MeasureFreeBytes(string directory)
@@ -384,6 +423,13 @@ public class SystemChecker : ISystemChecker
             return "Unable to determine";
         }
     }
+
+    // .NET exposes a file's mode but not its owner, so the numeric group comes from stat.
+    private int? GroupOf(string path) =>
+        ExecuteCommand("stat", ["--format", "%g", path], out var output) &&
+        int.TryParse(output.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var groupId)
+            ? groupId
+            : null;
 
     private bool ExecuteCommand(string command, IReadOnlyList<string> arguments, out string output)
     {

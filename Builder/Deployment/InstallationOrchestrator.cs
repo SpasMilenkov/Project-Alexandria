@@ -16,16 +16,17 @@ public sealed class InstallationOrchestrator(IConfigurationService configuration
 {
     private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromMinutes(5);
 
-    // Stages run for every install, plus one each for audio models and for
-    // monitoring checks when those features are on; Execute must stay in step
+    // Stages run for every install, plus one each for audio models, the GPU test and
+    // monitoring checks when those apply; Execute must stay in step
     private const int AlwaysRunStages = 12;
 
     // How many stages a full run reports, so progress can be shown as a share
-    public static int StageCount(ResolvedCapabilities capabilities)
+    public static int StageCount(ResolvedCapabilities capabilities, IReadOnlyDictionary<string, string> environment)
     {
         var count = AlwaysRunStages;
 
         if (capabilities.AudioAnalysisEnabled) count++;
+        if (VideoEncodingEnvironment.UsesGpu(environment)) count++;
         if (capabilities.MonitoringEnabled) count++;
 
         return count;
@@ -97,7 +98,15 @@ public sealed class InstallationOrchestrator(IConfigurationService configuration
                 (modelPreparation ?? new InstallationModelPreparation()).Prepare(config, output, token));
         }
 
+        // TODO: offer pulling pre-built images once they are published, instead of always
+        // compiling from source.
         runStage("Building Alexandria", output => Require(docker.ComposeBuild(target, output), "The image build failed. Retry with the same installation folder after resolving the reported build error."));
+
+        // Only the built worker image shows whether its drivers can encode on this GPU.
+        if (VideoEncodingEnvironment.UsesGpu(config.EnvironmentValues))
+        {
+            runStage(VideoGpuTest.StageLabel, output => VideoGpuTest.Run(context, capabilities, configuration, docker, output));
+        }
 
         runStage("Starting storage and messaging", output =>
         {

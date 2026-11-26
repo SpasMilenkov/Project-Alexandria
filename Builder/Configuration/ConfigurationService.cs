@@ -76,6 +76,21 @@ public class ConfigurationService : IConfigurationService
             ? "      - essentia-net"
             : string.Empty;
 
+        // /dev/dri is mounted read-only instead of mapping the device: the stable by-path name has
+        // colons, which the devices syntax splits on, and a mapped device that disappears stops
+        // the container from starting, while a mounted folder only leaves the worker on the CPU.
+        // The mount only makes the nodes visible. The kernel lets the worker open the one GPU
+        // whose device number the rule names, and the node's group grants the file access.
+        var usesGpu = VideoEncodingEnvironment.UsesGpu(config.EnvironmentValues);
+        tokens["TRANSPILATION_GPU_VOLUME"] = usesGpu
+            ? "      - /dev/dri:/dev/dri:ro"
+            : string.Empty;
+        tokens["TRANSPILATION_GPU_ACCESS"] = usesGpu
+            ? "    device_cgroup_rules:\n" +
+              $"      - \"c ${{{VideoEncodingEnvironment.DeviceNumberKey}:?{VideoEncodingEnvironment.DeviceNumberKey} is required}} rw\"\n" +
+              $"    group_add:\n      - \"${{{VideoEncodingEnvironment.GroupKey}:?{VideoEncodingEnvironment.GroupKey} is required}}\""
+            : string.Empty;
+
         var services = capabilities.ComposeTemplates
             .Select(path => _templateService.ReplaceTokens(QuoteSourcePaths(_templateService.LoadTemplate(path), tokens["SOURCE_ROOT"]), tokens))
             .ToList();

@@ -46,6 +46,33 @@ public class SystemCheckScreenTests
         harness.Output.Should().Contain("Checking your machine");
     }
 
+    // The first node is the one setup wires and tests first.
+    [Theory]
+    [InlineData(null, null, "/dev/dri/a")]
+    [InlineData("/dev/dri/b", null, "/dev/dri/b")]
+    [InlineData("/dev/dri/b", "/dev/dri/c", "/dev/dri/c")]
+    [InlineData("/dev/dri/gone", null, "/dev/dri/a")]
+    public void Run_preferredGpu_listsTheSessionsPickThenTheInstalledOneFirst(string? installed, string? chosen, string expected)
+    {
+        var checker = HealthyChecker();
+        checker.GetSystemResources().Returns(new SystemResources
+        {
+            CpuCores = 8,
+            TotalMemoryMb = 16384,
+            VideoGpus = new[] { "a", "b", "c" }
+                .Select((name, i) => new RenderNode("/dev/dri/" + name, name, "AMD", $"226:{128 + i}", 110))
+                .ToArray(),
+        });
+        using var harness = new ShellHarness(new FakeKeys().Enter());
+        harness.Context.InstalledVideoGpu = installed;
+        harness.Context.ChosenVideoGpu = chosen;
+
+        SystemCheckScreen.Run(harness.Shell, checker, new ResourceCalculator());
+
+        harness.Context.Resources.VideoGpus.Should().HaveCount(3);
+        harness.Context.Resources.VideoGpus[0].Path.Should().Be(expected);
+    }
+
     [Fact]
     public void Run_unsupportedHost_stopsBeforeDockerProbe()
     {

@@ -290,19 +290,15 @@ public static class InstallationConfigurationResolver
             values[key] = defaults[key];
         }
 
-        // Limits follow the current machine and selection, so a repair after a hardware or
-        // feature change never keeps caps that no longer fit.
-        var limits = ResourceBudget.EnvironmentValues(ResourceBudget.Plan(ServiceCatalog.Resolve(draft.Features), context.Resources));
+        // Limits and the video encoder follow the current machine and selection, so a repair
+        // after a hardware or feature change never keeps caps or a GPU that no longer fit.
+        var capabilities = ServiceCatalog.Resolve(draft.Features);
+        ResourceBudget.ApplyEnvironment(values, capabilities, context.Resources);
+        VideoEncodingEnvironment.Apply(values, capabilities, context.Resources);
 
-        foreach (var key in values.Keys.Where(key => key.StartsWith(ResourceBudget.EnvironmentPrefix, StringComparison.Ordinal) && !limits.ContainsKey(key)).ToArray())
-        {
-            values.Remove(key);
-        }
-
-        foreach (var (key, value) in limits)
-        {
-            values[key] = value;
-        }
+        // The encoder was just chosen again, so an earlier deploy's GPU test no longer describes it.
+        // Not cleared in the deploy itself: a retry there keeps the settings that test settled on.
+        context.VideoEncodingOutcome = null;
 
         if (!recognizedRepair)
         {

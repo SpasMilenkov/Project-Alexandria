@@ -25,6 +25,12 @@ public interface IDockerService
     bool WaitForMonitoring(string target, TimeSpan timeout, Action<string>? onOutput = null) => false;
     bool ComposeUpApi(string target, Action<string>? onOutput = null) => false;
     bool IsHttpsPortOwned(string target, int port) => false;
+
+    // Runs the built transcoding worker's GPU probe on the given devices, through the generated
+    // compose file so the test sees exactly the mounts and groups the worker will get.
+    ProcessResult ProbeVideoGpus(string target, IReadOnlyList<string> devices, Action<string>? onOutput = null) =>
+        new(1, string.Empty, "GPU probing is unavailable.");
+
     bool IsHttpRedirectPortOwned(string target, int port) => false;
     IReadOnlyList<ContainerStatus> GetServiceStatuses(string target, Action<string>? onOutput = null) => [];
     IReadOnlyList<string> GetServiceLogs(string target, string service, int tail = 100) => [];
@@ -197,6 +203,11 @@ public class DockerService : IDockerService
     }
 
     public bool ComposeDown(string target) => RunCompose(target, ["down"]).Succeeded;
+
+    // Each device gets the worker's own 30 s probe, on top of starting the container.
+    public ProcessResult ProbeVideoGpus(string target, IReadOnlyList<string> devices, Action<string>? onOutput = null) =>
+        RunCompose(target, ["run", "--rm", "--no-deps", "--no-TTY", "--pull", "never", "transpilation-worker", "--probe-gpu", .. devices],
+            onOutput, TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(30) * devices.Count, captureOutput: true);
 
     public bool ValidateConfiguration(string target, Action<string>? onOutput = null) =>
         RunCompose(target, ["config", "--quiet"], onOutput).Succeeded;

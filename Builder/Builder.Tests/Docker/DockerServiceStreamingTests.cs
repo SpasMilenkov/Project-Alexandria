@@ -99,6 +99,42 @@ public class DockerServiceStreamingTests
         }
     }
 
+    // The probe must run the built image through the generated compose file, without starting
+    // dependencies, pulling or allocating a terminal, and keep the report the worker prints.
+    [Fact]
+    public void ProbeVideoGpus_devices_runsTheWorkerProbeThroughComposeAndKeepsItsReport()
+    {
+        var launch = Directory.CreateTempSubdirectory("builder probe ");
+        var target = Directory.CreateDirectory(Path.Combine(launch.FullName, "settings"));
+        ProcessStartInfo? captured = null;
+
+        Func<ProcessStartInfo, Process?> startProcess = info =>
+        {
+            captured = info;
+            return StartShell("echo '[{\"device\":\"/dev/dri/renderD128\",\"usable\":true}]'");
+        };
+
+        try
+        {
+            var sut = CreateSut(startProcess, launch.FullName);
+
+            var result = sut.ProbeVideoGpus("settings", ["/dev/dri/by-path/pci-0000:04:00.0-render", "/dev/dri/renderD129"]);
+
+            result.Succeeded.Should().BeTrue();
+            result.StandardOutput.Should().Contain("\"usable\":true");
+            captured!.ArgumentList.Should().Equal(
+                "compose", "--project-name", "test-project", "--project-directory", target.FullName,
+                "-f", Path.Combine(target.FullName, "docker-compose.yml"),
+                "--env-file", Path.Combine(target.FullName, ".env"),
+                "run", "--rm", "--no-deps", "--no-TTY", "--pull", "never", "transpilation-worker",
+                "--probe-gpu", "/dev/dri/by-path/pci-0000:04:00.0-render", "/dev/dri/renderD129");
+        }
+        finally
+        {
+            launch.Delete(recursive: true);
+        }
+    }
+
     [Fact]
     public void GetContainerStatuses_relativeTarget_keepsFormatAndPathsAsSingleArguments()
     {
