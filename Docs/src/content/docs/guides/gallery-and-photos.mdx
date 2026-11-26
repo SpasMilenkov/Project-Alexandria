@@ -1,0 +1,75 @@
+---
+title: Gallery & Photos
+description: Browse your images as a timeline and read the camera, date and location details stored in each photo.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**Photos** in the sidebar (`/gallery`) shows every image you have uploaded as one scrolling timeline, grouped by year and month. You do not have to put photos in a special folder: anything Alexandria recognises as an image appears here, wherever it is stored.
+
+{/* TODO screenshot: photo timeline */}
+
+## What shows up
+
+- All image files that are not encrypted. SVG graphics and icon files are left out, since they are not photographs.
+- Each photo is placed by the day it was **taken** when its capture date could be read, and by the day it was **uploaded** otherwise. Photos from a phone or camera therefore land on the right day even if you upload them months later.
+- If you edit a photo and the editor strips its metadata, the new version stays where the original was taken, because older versions' capture dates are used too. Switching the active version back restores that version's date.
+- [Encrypted](/guides/encryption/) images never appear, because the server cannot read them.
+- Photos in the [trash](/guides/files-and-versioning/#trash--restore) are hidden until restored.
+
+With no images yet the page says "No photos yet" and offers **Open files**.
+
+## Moving around
+
+The page loads months as you scroll toward them. A **scrubber** along the right edge lets you jump to a year or month. The sort control above the grid switches between **Date taken** (photos without a capture date use their upload date) and **Date uploaded**; your choice is remembered in this browser.
+
+Click a photo to open it in the viewer. The open photo is part of the page address, so the browser's back button, or a phone's back gesture, closes the viewer instead of leaving the gallery.
+
+### Selecting photos
+
+Use the tick on a photo (or press and hold on a touch screen) to start selecting. Holding Shift while you pick a photo selects the range back to the last one you picked, even across months that are loaded. Each month header has a control to select or deselect that whole month. Esc clears the selection.
+
+While photos are selected the toolbar becomes a selection bar showing "N selected" with:
+
+- **Share**: creates a [share link](/guides/sharing-links/). It works on one photo at a time.
+- **Download**: a single photo, or a ZIP for several.
+- **Trash**: moves them to the trash. A message offers **Undo** and **Open trash**.
+
+## The photo viewer
+
+The viewer shows the photo with controls to go back to the grid, zoom (**Zoom in** / **Fit to screen**), **Show info**, **Show in folder** (opens the file's folder in a new explorer tab), **Share**, **Download** and **Move to trash**.
+
+| Key | Action |
+|---|---|
+| Left / Right arrow | Previous or next photo |
+| + / - / 0 | Zoom in, zoom out, reset |
+| I | Show or hide the info panel |
+| Delete | Move to trash |
+
+The **Info** panel shows the file name, when it was uploaded, and **Image details** (below). Neighbouring photos are preloaded so paging is quick.
+
+## Image details and metadata
+
+Cameras and phones write extra information into each photo (EXIF). Alexandria reads it **when the image's preview is generated**, so a fresh upload may say "Not read yet. Details appear once the preview is generated" for a short while. The same **Image details** section appears in a file's details drawer in the explorer.
+
+It can show:
+
+- **When**: a headline such as "Sunday afternoon", the date and time, and a note saying whether the time is "Local time" with its offset or only the "Camera clock, time zone unknown".
+- **Camera**: make and model, and the lens.
+- **Size**: shape and megapixels, with the pixel dimensions.
+- **Location**: the GPS coordinates saved by the camera, with a button to copy them. This appears only if the photo has location data.
+- **Camera settings** (a collapsible row): **Aperture**, **Shutter**, **ISO**, **Focal length** and **Software**, with short plain-language hints.
+
+A photo with none of this says "This image has no camera or capture details."
+
+<Aside type="note" title="Photos from an Android phone browser have no location">
+  If you upload from the **browser on an Android phone**, the location is usually missing. Android strips GPS data from files that a web page picks, unless the browser has permission to read the photo's location. Uploads from a desktop browser keep it. This is a limit of the phone, not a fault in Alexandria, so if location matters, upload originals from a computer.
+</Aside>
+
+<Aside type="caution">
+  The location and other metadata belong to the **original file**. Previews have their metadata removed, but a [share link](/guides/sharing-links/) or a download serves the original, so whoever receives it can read the coordinates. The share dialog warns you with "This photo includes its location".
+</Aside>
+
+---
+
+Related: [Uploads & Previews](/guides/uploads-and-previews/) · [Files & Versioning](/guides/files-and-versioning/) · [Search & Documents](/guides/search-and-documents/)

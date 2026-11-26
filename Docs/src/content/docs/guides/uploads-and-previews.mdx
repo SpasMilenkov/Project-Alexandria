@@ -1,0 +1,77 @@
+---
+title: Uploads & Previews
+description: Getting files, folders and archives in, and what previews to expect.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Uploading
+
+In the [Files](/guides/files-and-versioning/) explorer, the **Upload** split button (or **Upload** on a narrow screen, which opens a sheet headed "Upload to" and the folder name) offers three kinds of upload. The same choices are in the right-click menu on empty space (**Upload File**, **Upload Folder**, **Upload Archive**), and the Home page has a **Quick upload** widget.
+
+You can also **drag from your computer** onto the explorer. A banner shows where the files will go ("Upload to" and the folder name). Dropping a folder uploads the whole folder; dropping a single `.zip` asks what to do with it (see below).
+
+{/* TODO screenshot: upload modal with drag-drop area */}
+
+### Files
+
+**Upload files** opens a dialog headed "Upload files" with a drop area ("Drop files here", **Choose files**) and **Add files** for more. Any file type works. Each file shows a progress bar that passes through these stages: **Encrypting** (only if you chose it), **Checking the file**, **Preparing**, **Uploading** and **Verifying**, ending in **Uploaded**. Uploads run in parallel batches. If some fail you can use **Retry failed**, and **Stop** or **Cancel** ends a running upload.
+
+Uploading into a folder that already holds a file with the same name adds a new [version](/guides/files-and-versioning/#versioning) of that file.
+
+Each file row has a lock button, **Encrypt this file**, for optional client-side encryption. See [Encryption](/guides/encryption/).
+
+### Folders
+
+**Upload a folder** ("Everything inside it is uploaded, keeping its subfolders") recreates the folder and its subfolders at the destination. It shows a tree with the status of every file and a combined progress summary.
+
+### Archives
+
+**Upload Archive** reads a `.zip` (or `.jar`) file **in your browser**, shows its contents as a tree, and uploads the files inside, recreating the archive's folders at the destination. Unpacking happens on your device, not on the server, and the progress reads "Unpacking N of M files" before the upload starts.
+
+If you drag a `.zip` onto the explorer, a dialog titled **Upload this ZIP** offers:
+
+- **Unpack into a folder**: extract it and recreate its folders at the destination.
+- **Keep as a single file**: upload the `.zip` unchanged.
+
+<Aside type="tip">
+  If encryption is switched on for a file, you will see the "Encrypting" stage before the transfer starts. Large files take longer to encrypt, and encryption is limited to files under 500 MB.
+</Aside>
+
+### Size limits
+
+Alexandria has **no per-file size setting**. The admin Configuration page only controls how long activity history is kept. File data goes straight from your browser to object storage, so in practice the limits are your storage capacity, your [quota](/guides/files-and-versioning/#my-storage) and whatever your reverse proxy allows. Two limits are built in:
+
+- Client-side encryption works on files under **500 MB**.
+- The note editor opens notes up to **1 MB**.
+
+If an upload fails, the row shows a plain-language reason, for example that the file is too large for the server, that you lack permission, or that you sent too many uploads at once.
+
+## What previews you get
+
+After upload, background workers generate previews and thumbnails asynchronously. Small files are ready in seconds, big media takes longer. Open **View details** on a file to see its preview, and the explorer grid shows image previews in place of file-type icons unless you turn **File thumbnails** off in [Settings](/guides/settings-and-appearance/#appearance).
+
+| Content | Thumbnail | Preview in the details drawer |
+|---|---|---|
+| Images | yes | full-size image |
+| Documents (Word, Excel, PowerPoint, OpenDocument, RTF) | yes | converted to PDF, first 5 pages |
+| PDFs | yes | rendered, first 5 pages |
+| Archives | icon | tree of the contents |
+| Text, code, markdown | icon | text pane with a download option |
+| Audio | artwork card | playable clip with seek and volume |
+| Video | poster frame | playable clip |
+
+Previews exist per **version**, so switching the active version switches the previews too. Until a preview finishes you see a placeholder and there is nothing to do but wait.
+
+- **PDFs and paged documents are trimmed to 5 pages.** Links into a document page (see [Notes](/guides/notes/#page-and-time-links)) stop at page 5. Download the file for the full document.
+- **Encrypted files have no preview** and no thumbnail, because the server cannot read them.
+- **Password-protected documents** show "No preview for locked documents"; download and open them with the password.
+- Photo metadata (camera, date, location) is read when the preview is generated. See [Gallery & Photos](/guides/gallery-and-photos/).
+
+<Aside type="note">
+  Preview generation runs in isolated worker containers. If previews never appear, that is an operator concern. See [Troubleshooting](/operations/troubleshooting/), or the **Previews** page in the [admin area](/guides/administration/#integrations).
+</Aside>
+
+---
+
+Related: [Files & Versioning](/guides/files-and-versioning/) · [Encryption](/guides/encryption/) · [Automation](/guides/automation/) for folder rules that process new uploads

@@ -1,0 +1,64 @@
+---
+title: Sharing Links
+description: Share a single file publicly with an expiring, revocable link.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+A share link lets anyone with the URL download **one file**, with no account needed. Use it to send something to a friend, to a device that is not signed in, or to a service that accepts a URL. Folders cannot be shared.
+
+## Creating a link
+
+<Aside type="note">
+  The link is built from the address you are using to reach Alexandria (`https://your-server/share/...`), so it only works for people who can reach that address. Alexandria is meant for private networks.
+</Aside>
+
+You can open the share dialog from three places:
+
+- The file's right-click menu in the explorer: **Share** (one file at a time).
+- A single version in the file's **Versions** list, using the link icon ("Share version N").
+- The photo viewer or the selection bar in the [gallery](/guides/gallery-and-photos/): **Share** (one photo at a time).
+
+Then, under **Generate new link**:
+
+1. Choose **Expires after**: **1 hour**, **1 day**, **7 days** (the default) or **30 days**.
+2. Choose **Download limit**: **Unlimited**, **1 download**, **5 downloads**, **10 downloads** or **25 downloads**.
+3. Press **Generate**, then copy the URL with the copy button next to it.
+
+{/* TODO screenshot: share link modal */}
+
+### Which version does a link point to?
+
+- A link made from the file's own **Share** action always follows the file's **current version**. If you later switch the active version or upload a new one, the same link serves the new content.
+- A link made from the **Versions** list is **pinned** to that version and keeps serving it.
+
+The dialog title tells you which kind you are making: **Share link** or **Share version N**. It lists only the links of that kind.
+
+<Aside type="caution">
+  Share links serve the **original file**, not a preview, so metadata inside it is included. The dialog warns you when a photo contains its location ("This photo includes its location") or a document names its author ("This document names who wrote it"). Anyone who downloads it can read that information.
+</Aside>
+
+## What recipients see
+
+The link opens a minimal public page showing the file name and type, a **latest** or **pinned** version badge, an inline preview for images, the **Size**, **Version** and **Link expires** time, and a **Download** button. There is no navigation into your library; the shared file is all they can reach.
+
+If the link cannot be used they see one of: **Link not found**, **Link expired**, **Link revoked** or **Download limit reached**.
+
+<Aside type="caution">
+  Anyone holding the URL can download until it expires, is revoked, or reaches its download limit. Treat share URLs like keys to that one file.
+</Aside>
+
+### Encrypted files
+
+A share link hands out the file exactly as stored. For a file you [encrypted](/guides/encryption/) the recipient therefore gets the encrypted bytes, with no inline preview, and the share page does not decrypt anything. Share encrypted files only with people who can decrypt them some other way.
+
+## Managing links
+
+- The **Existing links** list in the dialog shows each link's URL, when it was created, when it expires and how many downloads it has used ("3 / 10 downloads" when limited).
+- Links that are no longer usable are dimmed and badged **Expired**, **Limit reached** or **Revoked**. The copy button still works for reference.
+- **Revoke** (the red x on an active link) ends it immediately. Existing copies of the URL stop working on the next request.
+- The **Shared links** tile on your [account page](/guides/settings-and-appearance/#my-account) totals your links.
+
+---
+
+Related: [Files & Versioning](/guides/files-and-versioning/) · [Encryption](/guides/encryption/) · [Technical details](/development/sharing-signed-urls/)

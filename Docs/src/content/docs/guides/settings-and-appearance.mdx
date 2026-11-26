@@ -1,0 +1,104 @@
+---
+title: Settings & Appearance
+description: Themes, backgrounds, behavior settings, your account page and the Home page widgets.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Personal preferences live in three places:
+
+- **Settings** (`/settings`): appearance and behavior.
+- **My account** (`/account`): your profile, sessions and sign-in history.
+- **Home** (`/home`): a page of widgets you arrange yourself.
+
+Settings and My account are in the menu at the bottom of the sidebar (click your name), together with **My storage** and **Report a problem**. **Log out** is the button underneath.
+
+{/* TODO screenshot: appearance settings */}
+
+## Settings
+
+Changes save automatically. The header shows "Saving..." and then "All changes saved". The page has a **Search settings** box, **Collapse all / Expand all**, and **Reset all** (which also removes your background image). On a wide screen a side column lists the sections; on a phone the page is an overview that opens one section at a time.
+
+<Aside type="note">
+  Settings are stored with your account, so your look follows you to any device. The one exception is **Light and dark**, which is remembered per browser.
+</Aside>
+
+### Appearance
+
+A **Live preview** panel shows your changes as you make them. The section has these groups:
+
+**Theme**
+
+- **Light and dark**: **System** (follow your operating system), **Light**, **Dark**, or **Scheduled**. A schedule asks for **Light from** and **Dark from** times and switches by the local time on this device. The sun/moon button in the top bar toggles the mode at any time.
+- **Accent color**: a swatch for each color (red, orange, amber, yellow, lime, green, emerald, teal, cyan, sky, blue, indigo, violet, purple and more). It colors selected states, switches and the main action across the app.
+- **Tab icon color**: the color of the browser tab's icon, either **Match accent** or a color of its own.
+- **Background Color**: preset backgrounds. The set shown depends on whether you are in light or dark mode.
+- **Background Image**: upload your own picture behind the app (**Upload image**, then **Replace image** or **Remove**). The maximum size is **2 MB**. **Image visibility** is **Faint**, **Balanced** or **Vivid**. The image is stored in your instance's object storage and shown only to you.
+- **Interface font**: **System**, **Serif** or **Mono**.
+- **Corner roundness**: **Sharp**, **Soft** or **Round**.
+
+**Glass look**
+
+- **Background blur** (on or off) with **Subtle**, **Soft** or **Deep frost**.
+- **Calm phones down**: keep small screens solid, since blur can lag on older phones.
+- **Panel clarity**: **Airy**, **Balanced** or **Nearly solid**.
+
+**File browsing**
+
+- **File thumbnails**: show image previews instead of file-type icons in the explorer grid.
+- **Grid tile size** and **List row size**: **Compact**, **Comfortable** or **Spacious**.
+
+### Behavior
+
+- **Skip delete confirmation**: when on, deleting a folder that still has files in it no longer asks first. Off by default, and the page warns that turning it on can lead to accidental data loss.
+- **Notification chatter**: **Tell me everything**, **Only when it hurts** (errors only) or **Zen mode** (silent). Critical operations such as login, uploads and file restoration are always shown.
+
+### Auto-tagging
+
+Shown only when automatic tagging is enabled on your installation. Both options are off by default.
+
+- **Allow confidence regression**: when off, re-running auto-tagging never lowers the confidence of a tag already on a file. When on, the latest verdict is always stored.
+- **Allow automatic metadata overwrite**: when off, automatic processing never replaces a title, artist, album, year or genre already on a file, so your corrections survive re-runs. When on, the latest automatic output wins.
+
+Your manually added or removed tags are never affected. See [Tags & Auto-Tagging](/guides/tags-and-auto-tagging/).
+
+### Auto-playlists
+
+**Minimum tracks per tag or genre playlist** (default 10, range 1 to 100). Tag and genre groupings with fewer streamable tracks never become playlists. Artist and album playlists always appear, and playlists that already exist keep syncing. A sample list shows which example groupings would qualify. See [Streaming & Playlists](/guides/streaming-and-playlists/#playlists).
+
+## My account
+
+**My account** is a read-and-manage page for your own identity:
+
+- **Profile** card: your picture, **Username** (use the pencil to **Change username**, then **Save username**) and your email. A badge shows **Admin** for administrators. You sign in with your email, not the username.
+- **Profile picture**: choose JPEG, PNG, WebP or an animated GIF, crop it, and press **Save picture**. Images must be under 25 MB, GIFs under 4 MB and at most 1024 by 1024 pixels. **Remove profile picture** puts your initials back.
+- **Your library**: counts of Files, Folders, Photos, Tracks, Videos, Playlists, Tags, **Shared links** and **Listened** time, each linking to the right page, plus a ring showing how much of your quota is used.
+- **Recent activity**: the latest uploads, renames, moves and deletes, with **View all** opening **Access history** (`/access-history`). Access history is your own filterable log of changes to your files, folders and library, and it can be exported.
+- **Active sessions**: every browser and phone signed in to your account, with **This device** marked and a **Sign out** for each other one.
+- **Sign-in history**: sign-ins from the last 90 days, failed attempts, and the addresses you signed in from.
+
+Your account page has no password-change form. You set your password during [onboarding](/getting-started/first-steps/#onboarding); an administrator manages accounts from the [user registry](/guides/administration/#user-registry).
+
+## Home widgets
+
+**Home** is the first page after sign-in. Press **Customize** to rearrange it. The page title changes to "Arrange your dashboard" and a panel opens.
+
+- **Add widget** opens a catalogue grouped as **Files**, **Media**, **System** and **General**. Each widget comes in **Small**, **Medium** and **Large** sizes.
+- Drag a widget to move it, or use the handles to resize it. With a widget selected the arrow keys move it one cell, **Delete** removes it, and Ctrl+D duplicates it. A small toolbar offers a quick style picker, **Duplicate** and **Remove**.
+- Each widget has its own options, for example a style, a time zone for the clock, or a date for the countdown.
+- **Undo** and **Redo** step through your edits, and **Preview** shows the page without editing handles.
+- Layout controls: **Use a separate mobile layout**, **Show widget titles**, **Show header greeting**, and **Reset this layout**.
+- **Save changes** keeps the layout. **Cancel**, or leaving with Esc, asks "Leave customization?" if you have unsaved changes.
+
+Available widgets:
+
+| Group | Widgets |
+|---|---|
+| Files | **Storage**, **Recent files**, **Library shortcuts**, **Quick access** (your favorite folders), **Quick upload** |
+| Media | **Player**, **Top songs** (last 7 days), **Latest recap**, **Collections** (automatic collections) |
+| System | **System status** (service status and 30 days of incidents), **Transcoding jobs**, **Recent activity** |
+| General | **Greeting**, **Clock**, **Countdown**, **Focus timer**, **Daily cover** (generated artwork for each day) |
+
+---
+
+Related: [First Steps](/getting-started/first-steps/) · [Tags & Auto-Tagging](/guides/tags-and-auto-tagging/) · [Administration](/guides/administration/)

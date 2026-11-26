@@ -1,0 +1,117 @@
+---
+title: Files & Versioning
+description: Browsing with explorer tabs, drag and drop, versions, trash and your storage.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Everything you store lives under **Files** in the sidebar (`/dashboard`): a file explorer with tabs, folders, drag and drop, a details drawer and search.
+
+{/* TODO screenshot: dashboard file explorer */}
+
+<Aside type="note">
+  Shortcuts below are written for Windows and Linux. On a Mac, use Cmd instead of Ctrl. Open the keyboard icon in the top bar (or press Ctrl+K) to see every shortcut in the app.
+</Aside>
+
+## Explorer tabs
+
+The explorer works like a browser: each **tab** is its own folder view, and a tab's title follows the folder you are in.
+
+- Click the **+** at the end of the tab strip (or press Ctrl+Shift+N) to open a new tab. Close the active tab with Ctrl+Shift+Q, or with the x on its title.
+- The strip also has a **Close all tabs** button once more than one tab is open. The last tab cannot be closed.
+- Tabs are remembered, so they are still there after a reload.
+- You can drag items from one tab to another while you hold them; the drag survives the switch.
+- On a phone the tabs sit in a bar at the bottom. It shows three tabs, a **New tab** button and an overflow count. Long-press a tab (or open the overflow) for an **All tabs** sheet with a close-all button.
+- Opening a photo's **Show in folder** from the [gallery](/guides/gallery-and-photos/) uses a new tab, so the tabs you had stay put.
+
+## Browsing
+
+Each tab has a toolbar:
+
+| Control | What it does |
+|---|---|
+| **Upload** split button | Uploads a **File**, a **Directory** or an **Archive**. The arrow next to it switches the default. See [Uploads & Previews](/guides/uploads-and-previews/). |
+| **New Folder** | Creates a folder in the current location (shortcut: N). |
+| **New Note** | Creates an empty markdown note and opens the [editor](/guides/notes/). Inside the Notes folder it lands in the folder you are viewing; anywhere else it goes into Notes itself. |
+| **Sort by** | **Name**, **Date Created** or **Date Modified**, with an ascending/descending toggle. |
+| Grid / List | Switches between tiles and rows. List view adds **Type**, **Modified** and **Size** columns. |
+| **per page** | How many items to show before **Show more folders** / **Show more files**. |
+| Search | Opens [search](/guides/search-and-documents/) (Ctrl+/). |
+
+The back and forward arrows next to the breadcrumbs step through your location history (also Alt+Left and Alt+Right). Breadcrumbs start at **Home** and let you jump to any parent. A small label shows when the folder was last refreshed, and the list refreshes in the background.
+
+On a narrow screen the toolbar collapses to **Upload**, **Search** and a **More options** menu holding sort, size and view settings.
+
+Hover a file or folder for a tooltip card with quick details. Appearance of tiles and thumbnails (tile size, whether image thumbnails show) is set in [Settings](/guides/settings-and-appearance/#appearance).
+
+### Selecting and acting on items
+
+Click an item to select it, Ctrl-click to add to the selection, or drag a box over empty space to select several. Then use the right-click menu (long-press on touch screens):
+
+- **View details** (Alt+Enter, or double-click a file), **Download** (D), **Rename** (R or F2), **Move to…**, **Copy to…**, **Share**, and **Delete** (Del).
+- Folders also have **Open**, and **Add to favorites** / **Remove from favorites**. Starred folders can be pulled into the Home page's Quick access widget and found with the `is:starred` search filter.
+- With several items selected the menu offers **Download all**, **Move all to…**, **Copy all to…** and **Delete N items**. **Share** works on one file at a time.
+- Right-click empty space for **Upload File**, **Upload Folder**, **Upload Archive**, **New Folder** and **Refresh**.
+- Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste items between folders. Esc clears the selection or cancels a cut.
+- System folders created for you (such as Notes) cannot be renamed, moved or deleted.
+
+Downloading several items, or a folder, gives you a ZIP.
+
+### Moving with drag and drop
+
+Drag selected items onto a folder, onto a breadcrumb to move them up the path, or into another tab's folder to move them there. Mouse and pen pick up after a few pixels; on touch you press and hold first, so ordinary scrolling still works. Dragging files **from your computer** into the explorer starts an upload instead (see [Uploads & Previews](/guides/uploads-and-previews/)).
+
+When you delete a folder that still contains files, Alexandria asks first ("All sub items will also be deleted"). You can switch that prompt off under **Settings → Behavior → Skip delete confirmation**.
+
+## The details drawer
+
+**View details** (or a double-click) opens a drawer for a file with:
+
+- **Preview** of the current version. Password-protected documents show "No preview for locked documents".
+- **Tags**, with a picker and, for audio on installations with auto-tagging, an **Auto-tag** button. See [Tags & Auto-Tagging](/guides/tags-and-auto-tagging/).
+- **Mentioned in**: the notes that link to this file, plus **New note** to start a note about it. See [Notes](/guides/notes/#links-and-backlinks).
+- **Details**: size, type, created, modified and file ID.
+- **Image details** for photos and **Document details** (or **Book details**) for documents, once they have been read. See [Gallery & Photos](/guides/gallery-and-photos/) and [Search & Documents](/guides/search-and-documents/#document-properties).
+- **Owner**, **Versions**, and a **History** of changes made to the file.
+- For markdown files an **Open in editor** button.
+
+Folders have a similar drawer with rename, move, download, delete and a favorite star, plus created, modified and total size (including subfolders).
+
+## Versioning
+
+Uploading a file whose name already exists in the same folder does not overwrite it. It becomes a new **version** of that file. Notes also create versions, as [checkpoints](/guides/notes/#saving-drafts-and-versions).
+
+In the drawer's **Versions** section each version shows its number, size and type, with a lock icon if it is encrypted. The newest is badged **Current**. For each version you can:
+
+- **Download** it.
+- **Share** it, which creates a link pinned to that version. See [Sharing Links](/guides/sharing-links/).
+- **Queue transpilation** (the arrows icon) for audio or video, choosing which qualities to build for streaming.
+- **Set as active** (the check icon). The active version is what opens and downloads by default, and what previews, search and the gallery use.
+- **Delete** it. A deleted version stays listed with a **Deleted** badge and a **Restore** button, so deleting a version is reversible.
+
+<Aside type="tip">
+  Identical unencrypted content is stored only once behind the scenes (deduplication), so keeping old versions of unchanged data costs almost nothing. Encrypted files are not deduplicated.
+</Aside>
+
+## Trash & Restore
+
+Deleting moves files and folders to **Trash** (`/dashboard/trash`, in the sidebar) rather than erasing them.
+
+- The page lists **Folders** and **Files** that were deleted recently, with how long ago.
+- **Search deleted items** filters by name, and the **Deleted within** menu offers the last 7, 14 or 30 days.
+- Tick items (or **Select all**) and press **Restore**. Items return to where they were; restoring a folder restores its files.
+- Trash has no permanent-delete button. Items stay restorable for **30 days**. After that they can no longer be restored and a background cleanup removes their stored content.
+
+{/* TODO screenshot: trash view */}
+
+## My storage
+
+**My storage** (from your account menu at the bottom of the sidebar, or the storage ring) shows your usage against your quota, a bar split into Files, Previews and Transcoded, and tiles for each kind plus **Trash** ("Restorable for 30 days after deletion"). A chart breaks files down by type. Below it, **Preview artifacts** lists generated thumbnails and previews that you can delete to free space; they regenerate from the original when needed. Your quota is set by an administrator (default 10 GiB; 0 means unlimited).
+
+## Encryption note
+
+Encryption is optional and chosen per file when you upload. Encrypted files cannot be previewed or searched by content. See [Encryption](/guides/encryption/).
+
+---
+
+Related: [Uploads & Previews](/guides/uploads-and-previews/) · [Search & Documents](/guides/search-and-documents/) · [Sharing Links](/guides/sharing-links/) · [Notes](/guides/notes/) · [Tags](/guides/tags-and-auto-tagging/) · [Exporting your data](/guides/exporting-your-data/)

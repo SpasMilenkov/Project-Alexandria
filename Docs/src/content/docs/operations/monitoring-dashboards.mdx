@@ -1,0 +1,53 @@
+---
+title: Monitoring Dashboards
+description: Keep an eye on system health with Grafana and the admin pages.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Monitoring has two layers: **in-app admin pages** (always available) and the **Grafana stack** (optional, enabled via feature selection or the compose `monitoring` profile).
+
+{/* TODO screenshot: admin dashboard */}
+
+## In-App Admin Pages
+
+| Page | What it shows |
+|---|---|
+| **Dashboard** | Overall system health at a glance |
+| **Service Status** | Per-service health cards with incident age — "degraded for 12m" style |
+| **Incident History** | Error calendar, event feed with severity filters, per-day breakdowns |
+| **System Configuration** | Activity-history retention |
+| **Integrations → Audio Analysis** | Classification pipeline health: queue depth, stuck batches, failure rates, throughput |
+| **Integrations → Previews** | Preview artifacts and jobs, plus **Document text**: how many documents are searchable, waiting to be read, failed or can't be searched (scans, locked or empty files), the latest failures, and *Retry all* to queue failures again |
+
+<Aside type="note">
+  The document text failure list names a file only when it is yours. Failures in other accounts show their type, error and attempts, because admins never see another account's library.
+</Aside>
+
+Users can report problems via the sidebar's *Report a problem* link — reports land in the incident feed (throttled to prevent spam).
+
+## Public Status Page
+
+`/status` shows one healthy/degraded/down badge per service — safe to bookmark or share on your LAN without exposing internals.
+
+## Grafana Stack
+
+When monitoring is enabled:
+
+- **Dashboards**: container resources (cAdvisor), PostgreSQL internals (postgres-exporter), RabbitMQ queue depths, Garage storage metrics, API metrics
+- **Logs**: every container's structured logs are shipped to Loki; query by service and level from Grafana's log explorer
+- Access at your Grafana port with the `GRAFANA_USER`/`GRAFANA_PASSWORD` from `.env`
+
+<Aside type="tip">
+  Queue depth stuck above zero on a worker queue usually means its worker container is down or crashing — cross-check Service Status and <code>docker compose logs &lt;worker&gt;</code>.
+</Aside>
+
+## What To Watch
+
+1. **Worker queues** — growth means processing is falling behind
+2. **Disk** — object storage grows with your library; previews add overhead too
+3. **Failed enrichment batches** — repeated failures in Audio Analysis suggest model/container issues
+
+---
+
+Related: [Troubleshooting](/operations/troubleshooting/) · Technical detail: [Observability](/development/observability/)

@@ -1,0 +1,82 @@
+---
+title: Introduction
+description: What Alexandria is, who it is for, and what it can do.
+---
+
+import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
+
+Alexandria is a **self-hosted, all-in-one personal library** for your files and media. It runs on your own hardware (a home server, an old PC, a NAS box behind Docker) and gives you a private web interface for everything you store: documents, photos, notes, archives, music, video.
+
+<Aside type="caution">
+  Alexandria is <strong>pre-alpha software</strong>. Do not store files you care about without your own backups. Data loss, breaking changes, and instability are expected at this stage.
+</Aside>
+
+## Who It's For
+
+Alexandria is built for personal use on **private networks**: "my files, on my hardware, reachable from my devices". It is not designed for commercial use or for exposing directly to the internet.
+
+## What You Get
+
+<CardGrid stagger>
+  <Card title="File Management" icon="seti:folder">
+    Upload files, folders and ZIP archives, then browse them in tabbed explorers with drag and drop. Deleted items rest in **Trash** and can be restored for 30 days. See [Files & Versioning](/guides/files-and-versioning/).
+  </Card>
+  <Card title="Versioning" icon="clock">
+    Uploading a file with the same name into the same folder adds a new version. Switch the active version, download old ones, or restore a deleted one.
+  </Card>
+  <Card title="Search" icon="magnifier">
+    One search box for file names, folders and the text inside documents, narrowed with filters. See [Search & Documents](/guides/search-and-documents/).
+  </Card>
+  <Card title="Notes" icon="pencil">
+    Write markdown notes in the app. Notes autosave drafts, keep versions, and link to files, folders, tags and playlists. See [Notes](/guides/notes/).
+  </Card>
+  <Card title="Photos" icon="star">
+    A timeline of your images, ordered by the day each was taken. See [Gallery & Photos](/guides/gallery-and-photos/).
+  </Card>
+  <Card title="Previews" icon="seti:image">
+    Automatic previews and thumbnails for images, documents (Office, PDF), archives, text files, audio, and video.
+  </Card>
+  <Card title="Tags & Auto-Tagging" icon="list-format">
+    Organize with colored tags. For music, an optional analysis pipeline derives genre and mood automatically.
+  </Card>
+  <Card title="Sharing" icon="link">
+    Public share links for a single file, with an expiry between 1 hour and 30 days and an optional download limit. Revocable at any time.
+  </Card>
+  <Card title="Music & Video Streaming" icon="seti:audio">
+    An integrated player with playlists, synced lyrics, play history, adaptive-quality streaming and listening recaps.
+  </Card>
+  <Card title="Client-Side Encryption" icon="padlock">
+    Optionally encrypt a file in your browser before it is uploaded. The server stores ciphertext and never sees your password.
+  </Card>
+  <Card title="Home" icon="laptop">
+    A customizable Home page of widgets: recent files, storage, a player, system status and more.
+  </Card>
+  <Card title="Accounts & Administration" icon="setting">
+    Accounts with roles and storage quotas, a first-login onboarding flow, activity history, and an admin area with health monitoring. See [Administration](/guides/administration/).
+  </Card>
+</CardGrid>
+
+## Under the Hood
+
+A Vue single-page app talks to an API that coordinates background workers through a message queue. Files live in S3-compatible object storage; state lives in PostgreSQL. Everything ships as Docker containers.
+
+Curious about internals? The [Development](/development/architecture/) section covers the architecture in depth, but you don't need any of it to run or use Alexandria.
+
+## Requirements
+
+| | Minimum | Comfortable |
+|---|---|---|
+| CPU | 2 cores | 4 cores (media features) |
+| RAM | ~2 GB base stack | 4 GB with media processing + monitoring |
+| Disk | 10 GB for the stack | + as much as your library needs |
+| Software | Docker + Docker Compose v2 | |
+
+Optional features scale requirements: media workers add ~1 GB RAM, monitoring adds ~512 MB.
+
+## License
+
+AGPL-3.0. See the [repository](https://github.com/SpasMilenkov/Project-Alexandria).
+
+---
+
+Next: [Installation](/getting-started/installation/) via the interactive installer, or [Manual Installation](/getting-started/manual-installation/) if you prefer doing it by hand. Once it is running, continue with [First steps](/getting-started/first-steps/).

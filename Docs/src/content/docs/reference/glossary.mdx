@@ -1,0 +1,108 @@
+---
+title: Glossary
+description: Alexandria's terminology — what the words mean across guides and docs.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Short definitions for words this documentation uses. Cross-references point where deeper detail lives.
+
+## Files & Storage
+
+**Active version** — which version of a file opens/downloads by default when several exist. Switchable per file. See [Files & Versioning](/guides/files-and-versioning/).
+
+**Blake3** — fast cryptographic hash function used to fingerprint file contents; identical contents share stored data.
+
+**Content object** — one stored copy of unique file content. Many file versions can point at the same content object — that's how deduplication works.
+
+**Deduplication** — identical files (same hash) are stored once regardless of names or locations.
+
+**Presigned URL** — a temporary, pre-authorized link letting a browser upload/download directly from storage without proxying through the API.
+
+**Promotion** — background step moving an upload from the staging bucket into permanent storage after finalization. See [Upload Pipeline](/development/upload-pipeline/).
+
+**Explorer tab** — an independent folder view in the Files explorer, remembered across reloads. Items can be dragged between tabs. See [Files & Versioning](/guides/files-and-versioning/#explorer-tabs).
+
+**Soft delete** — deletion that only hides an item (sets a timestamp) instead of erasing it; soft-deleted items rest in **Trash** and can be restored for 30 days, after which their stored content is cleaned up.
+
+**Version** — one stored copy of a file at a point in time. Re-uploading the same name into the same folder creates a new version rather than overwriting.
+
+**Version pinning** — creating a share link bound to one specific version instead of the active one. See [Sharing Links](/guides/sharing-links/).
+
+## Notes & Photos
+
+**Backlink** — a "Mentioned in" entry: a note that links to a file or to another note. See [Notes](/guides/notes/#links-and-backlinks).
+
+**Checkpoint** — a note's draft turned into a real version, by Save (Ctrl+S), after about 10 minutes of editing, or after an hour idle. See [Notes](/guides/notes/#saving-drafts-and-versions).
+
+**Draft** — the working text of a note, stored automatically while you type. It is replaced on each save and is not a version until a checkpoint is made.
+
+**Embed** — a file shown inside a note, written `![[`, instead of linked. Images and PDFs show a preview, and audio and video a player card.
+
+**EXIF / capture metadata** — camera, date, size and GPS location that a camera writes into a photo. See [Gallery & Photos](/guides/gallery-and-photos/#image-details-and-metadata).
+
+**ID link** — a link in a note written `alexandria://file/ID` (also folder, tag or playlist). It follows the target through renames and moves.
+
+**Zen mode** — a note editor view that hides the app's navigation. Toggle with Ctrl+Shift+F, leave with Esc.
+
+## Search
+
+**Filter chip** — a `key:value` filter in the search box, such as `in:`, `tag:` or `size:`. See [Search & Documents](/guides/search-and-documents/#filters).
+
+**Full-text search** — finding a document by the words inside it, not only its name. Works on text read from PDFs, Office files, EPUB books and plain text.
+
+**No text layer** — a PDF made of page images (a scan). Its words cannot be searched without OCR.
+
+## Media & Analysis
+
+**Backbone** — which AI model family analyzes your audio: `effnet` or `maest`. Exactly one runs per instance. See [Audio Analysis](/development/audio-analysis/).
+
+**Batch** — a group of audio files sent together for analysis; tracked end-to-end so failures and timeouts are visible.
+
+**Enrichment** — the result rows of audio analysis (genre predictions, mood scores) attached to a file before becoming tags.
+
+**Preview** — a generated representation of a file (PDF render, playable clip…). **Thumbnail** — its smaller icon form. Both are generated per version by workers.
+
+**System tags** — read-only taxonomy shipped with your instance (genre families like Rock → Nu Metal, mood axes). See [Tags & Auto-Tagging](/guides/tags-and-auto-tagging/).
+
+**Suppressed tag** — an auto-tag you removed; analysis won't re-add it unless you re-adopt it manually.
+
+**Transpilation job** — the processing step that turns media into adaptive-bitrate streams. Playlists reference jobs, not raw files. Shown to users as **Conversions**. See [Streaming & Playlists](/guides/streaming-and-playlists/).
+
+**Brief listen** — a play shorter than 30 seconds (or half of a short track). Longer plays are counted as **Played** in play history and recaps.
+
+**Wrapped** — your yearly or monthly listening recap, built from play history. See [Streaming & Playlists](/guides/streaming-and-playlists/#listening-stats-and-wrapped).
+
+**Automatic playlist** — a playlist Alexandria builds from your library by artist, album, genre, tag or decade.
+
+**Client-side encryption** — optional per-file encryption done in the browser with a password you choose for that file. See [Encryption](/guides/encryption/).
+
+**Home widget** — a movable tile on the Home page. See [Settings & Appearance](/guides/settings-and-appearance/#home-widgets).
+
+**Public status page** — `/status`, readable without signing in. See [Administration](/guides/administration/#the-public-status-page).
+
+## Accounts & Security
+
+**CSRF token** — anti-forgery measure protecting state-changing requests.
+
+**Onboarding** — first-login flow for every new account, the first administrator included: set password → profile → welcome tour, where starter folders are chosen. See [First steps](/getting-started/first-steps/#onboarding).
+
+**Quota** — the storage an account may use; 10 GiB by default, set by an administrator, 0 for unlimited. See [Administration](/guides/administration/#user-registry).
+
+**Restriction** — an administrator-set lock that stops an account signing in until a chosen date.
+
+**Refresh token rotation** — every session renewal invalidates the old refresh token and issues a fresh one, limiting theft windows. See [Authentication](/development/authentication/).
+
+**Share link** — public URL downloading one file without an account; can expire, cap access counts, be revoked instantly.
+
+## Infrastructure
+
+**Bucket** — a top-level storage container in S3-compatible systems. Alexandria uses five (files, temp, previews, images, streaming).
+
+**Garage** — the lightweight, Rust-based S3-compatible object storage Alexandria deploys by default.
+
+**VHost** — RabbitMQ virtual host isolating Alexandria's message traffic (`alexandria` by default).
+
+<Aside type="note">
+  Missing a term? These pages are open contributions — suggest additions via the repository issues.
+</Aside>

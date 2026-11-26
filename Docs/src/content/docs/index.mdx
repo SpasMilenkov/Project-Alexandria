@@ -1,49 +1,81 @@
 ---
 title: Alexandria
-description: A privacy-first, self-hosted digital library for your documents and media.
+description: A self-hosted home for your files, notes, photos and media, running on your own hardware.
 template: splash
 hero:
-  tagline: Your personal digital library. Private, powerful, and completely under your control.
+  tagline: Files, notes, photos, music and video in one self-hosted library on your own network.
   image:
-    file: ../../assets/alexandria-logo.webp
+    file: ../../assets/alexandria-logo.svg
   actions:
     - text: Get Started
-      link: /getting-started/installation/
+      link: /getting-started/introduction/
       icon: right-arrow
       variant: primary
+    - text: Install with the Builder
+      link: /guides/using-the-builder/
+      icon: setting
+      variant: secondary
     - text: View on GitHub
-      link: https://github.com/yourusername/alexandria
+      link: https://github.com/SpasMilenkov/Project-Alexandria
       icon: external
       variant: minimal
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Aside, Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-## Why Alexandria?
+<Aside type="caution" title="Pre-alpha">
+  Alexandria is pre-alpha software built for a home network. Expect breaking changes, and keep
+  your own copies of anything you store in it.
+</Aside>
+
+## What it does
 
 <CardGrid stagger>
-  <Card title="Privacy First" icon="seti:lock">
-    Your data stays yours. Self-hosted with no third-party tracking or cloud 
-    dependencies. Full GDPR compliance built in.
+  <Card title="Files with history" icon="document">
+    Upload, organise and version files. Previews are generated in the background for images,
+    documents, audio, video, archives and text, and deleted items wait in the trash.
   </Card>
-  
-  <Card title="One-Command Deployment" icon="rocket">
-    Get up and running in minutes with Docker Compose. No complex setup or 
-    configuration required.
+  <Card title="Streaming built in" icon="seti:audio">
+    Music and video with playlists, synced lyrics, transcoding and listening recaps, served from
+    your own machine.
   </Card>
-
-  
-  <Card title="Rich File Support" icon="document">
-    Handle documents (PDF, DOCX, Markdown), images, videos, audio, and more. 
-    Built-in preview generation and format conversion.
+  <Card title="Notes and documents" icon="pencil">
+    Write linked notes that embed your files, and search inside the text of your documents.
+  </Card>
+  <Card title="Automation" icon="random">
+    Folder policies, auto-tagging and background jobs keep the library organised without manual
+    work.
+  </Card>
+  <Card title="Optional encryption" icon="seti:lock">
+    Encrypt individual files in your browser at upload with a password of your own, so the
+    server only ever stores ciphertext.
+  </Card>
+  <Card title="Monitoring" icon="information">
+    Service health, incidents and an activity log for admins, plus a public status page.
   </Card>
 </CardGrid>
 
-<div style="text-align: center; margin-top: 3rem;">
-  <p style="font-size: 1.1rem; opacity: 0.9;">
-    Ready to take control of your digital library?
-  </p>
-  <a href="/getting-started/installation/" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 2rem; background: var(--sl-color-accent); color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600;">
-    Start Building →
-  </a>
-</div>
+## Where to start
+
+<CardGrid>
+  <LinkCard
+    title="Install with the Builder"
+    description="A terminal setup tool that checks your machine, writes the configuration and starts the stack."
+    href="/guides/using-the-builder/"
+  />
+  <LinkCard
+    title="First steps"
+    description="Create the first admin account and find your way around the dashboard."
+    href="/getting-started/first-steps/"
+  />
+  <LinkCard
+    title="Automate your library"
+    description="Set up folder policies, auto-tagging and background processing from the web UI."
+    href="/guides/automation/"
+  />
+  <LinkCard
+    title="Export your data"
+    description="Download files, export logs and recaps, and back up a whole instance."
+    href="/guides/exporting-your-data/"
+  />
+</CardGrid>

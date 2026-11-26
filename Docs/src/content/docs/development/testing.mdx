@@ -1,0 +1,44 @@
+---
+title: Testing
+description: The testing strategy — Vitest + Playwright on the frontend, xUnit v3 + Testcontainers on the backend.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Testing is two-tiered per side. Frontend unit tests run in jsdom; E2E runs real browsers. Backend unit tests cover pure logic; integration tests boot the full API against real infrastructure via Testcontainers.
+
+## Commands
+
+| Suite | Command | Notes |
+|---|---|---|
+| Frontend unit | `pnpm test:unit` (in `Frontend/`) | Vitest, jsdom; add `--coverage` for reports |
+| Frontend E2E | `pnpm test:e2e` | Playwright — Chromium, Firefox, WebKit; dev server auto-starts |
+| Backend unit | `dotnet test Alexandria.Tests.Unit` (from `Backend/`) | Pure logic, no infra |
+| Backend integration | `dotnet test Alexandria.Tests.Integration` | Requires Docker (Testcontainers spins up Postgres/RabbitMQ/Garage) |
+
+First-time Playwright setup: `pnpm exec playwright install`. HTML reports: `pnpm exec playwright show-report`.
+
+## Backend Test Stack
+
+- **xUnit v3** with **NSubstitute** mocks and **AwesomeAssertions** fluent assertions
+- **Testcontainers** wrappers + **Respawn** for clean DB state between integration tests
+- **WebApplicationFactory** boots the real API pipeline — integration tests hit actual HTTP endpoints
+- `Alexandria.Tests.Common` provides builders (Bogus-generated data), fakes, and fixtures shared by both suites
+
+Current coverage concentrates where logic is densest: lyrics (provider fallback strategy, handlers), tags (owner-scope filtering, system taxonomy), auto-tagging (derivation, triggers, sync), monitoring services, S3 service behavior, plus full-stack CRUD suites for files/directories (~45 test files across both projects).
+
+## What Gets Tested Where
+
+| Change type | Write tests in |
+|---|---|
+| Pure domain logic, providers, derivation rules | Unit |
+| Endpoint contracts, auth flows, DB behavior | Integration (`FullStack/`) |
+| User-visible flows, cross-browser regressions | Playwright E2E |
+
+<Aside type="caution">
+  Integration tests allocate real containers and ports; close other compose stacks or use a distinct Docker context if you hit conflicts.
+</Aside>
+
+---
+
+<Aside type="note">**Verified against:** `Frontend/package.json` scripts, test project listings (45 *Tests.cs across Unit+Integration), `Tests.Common` layout, `vitest.config.ts` / `playwright.config.ts` presence.</Aside>

@@ -1,0 +1,161 @@
+---
+title: Exporting Your Data
+description: Every way to get your files, activity history and recaps out of Alexandria, and what has no export yet.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Your files are yours. This page lists every route out of Alexandria that exists today. Where there is no export, it says so.
+
+| What | Where | You get |
+|---|---|---|
+| One file | **Files** → right-click → **Download** | The original file |
+| Several files or folders | **Files** → select → **Download** | One `archive.zip` |
+| An older version of a file | File details → version history | The original file of that version |
+| Photos | **Photos** → select → **Download** | The photo, or a zip for several |
+| Notes | **Files** → your Notes folder | Plain Markdown files |
+| Your activity history | **Access history** → **Export** | CSV or JSON |
+| The whole instance's audit log (admin) | **Admin** → **Access & security** → **Full log** → **Export** | CSV or JSON |
+| Your Wrapped recap | **Listening stats** → **Wrapped** → **Export** | A PNG or JPEG image |
+| Everything on the server (admin) | Backups, see [below](#for-admins-back-up-the-whole-instance) | Database dump and storage archives |
+
+## Files and folders
+
+### A single file
+
+Select the file and press <kbd>D</kbd>, or right-click it and choose **Download**. The browser fetches the file straight from storage, so large files do not pass through the API.
+
+### Several files, or a folder
+
+Select what you want and choose **Download all** (or **Download N items**) from the right-click menu, press <kbd>D</kbd>, or right-click a folder and choose **Download**. A folder's details drawer has a **Download** button too.
+
+Alexandria streams the selection back as one file named `archive.zip`:
+
+- Folders keep their structure inside the zip, including nested folders.
+- Only your own files are included, and only their current version. Trashed files are left out.
+- If a stored object has gone missing, its zip entry is empty and the rest of the archive still downloads.
+- The archive is streamed as it is built, so the server does not assemble a temporary copy first. Already-compressed formats such as JPEG, MP4 and MP3 are stored in the zip without recompression.
+
+<Aside type="note">
+  Each bulk download is recorded in your [access history](#your-activity-history), with the number of files and folders it covered.
+</Aside>
+
+### Older versions
+
+Every version of a file stays downloadable until you delete it.
+
+<Steps>
+
+1. Right-click the file and choose **View details**.
+2. In the version history, find the version you want.
+3. Click the download icon on that row (**Download version N**).
+
+</Steps>
+
+Versions that were deleted cannot be downloaded. See [Files & Versioning](/guides/files-and-versioning/).
+
+### Photos
+
+In **Photos**, select one or more photos and click **Download**. One photo downloads as is; several download as a zip.
+
+### Notes
+
+Notes are ordinary Markdown files stored in your **Notes** folder, and the note editor has no separate export action. Download them from **Files** like any other file, one at a time or by selecting the whole folder. Older revisions of a note are file versions, so they come out the same way as in [Older versions](#older-versions).
+
+<Aside type="caution">
+  A note that was uploaded with encryption, or a password-protected document, can only be downloaded, not opened in the editor. See the next section for what an encrypted download gives you.
+</Aside>
+
+## Encrypted files
+
+If your instance uses [client-side encryption](/guides/encryption/), the server only holds ciphertext, and a download behaves differently depending on how you take it.
+
+**A single encrypted file** downloads through your browser:
+
+1. Alexandria fetches the encrypted bytes into the browser.
+2. A **Decrypt & Download** dialog asks for the password you used at upload, and shows the hint if you set one.
+3. Decryption runs locally, and the plain file is saved. A wrong password keeps the dialog open so you can try again without fetching the file again.
+
+The whole file is held in memory while this happens, so very large encrypted files need a device with enough free memory.
+
+**A bulk download** does not decrypt anything. Encrypted files go into the zip as raw ciphertext under their normal names, and the zip gains an extra `_encrypted_metadata.json`. It lists each encrypted file's path, hint, salt, initialization vector, integrity tag and iteration count. Alexandria has no tool to decrypt that zip. To get usable copies, download each encrypted file on its own, as above.
+
+<Aside type="caution">
+  Lose the password and an encrypted file is unrecoverable, for you and for your administrator. An export of the ciphertext does not change that.
+</Aside>
+
+## Your activity history
+
+**Access history** in the sidebar (page title **Activity**) lists what has happened to your files and account. Use the filters to narrow it, including **Dates** under **When**, then click **Export** and choose a format:
+
+| Format | Good for | Contents |
+|---|---|---|
+| **CSV** | Spreadsheets | One row per event, with columns `timestamp`, `event_code`, `operation_type`, `entity_type`, `entity_id`, `entity_name`, `user_id`, `user_name`, `owner_id`, `parent_entity_id`, `correlation_id`, `source`, `ip_address` and `metadata` |
+| **JSON** | Scripts and other tools | The same fields the app itself reads |
+
+Things to know:
+
+- The export follows the filters currently applied on the page, so clear them for a complete history.
+- Rows are newest first, and only your own activity is included.
+- Timestamps in the CSV are in UTC.
+- Names that start with `=`, `+`, `-` or `@` get a leading quote in the CSV, so a spreadsheet does not run them as formulas.
+- Activity recorded after you click **Export** is left out.
+
+### Large exports come in parts
+
+One file holds up to 50,000 rows by default. If your filter matches more, **Export in parts** opens with a list such as **Part 1 of 3**, each showing its row count and date range. Download them one at a time or click **Download all**, which saves them in order. The files share one timestamp, for example `activity-20261126-101500-part-1-of-3.csv`, so they sort together in your downloads folder.
+
+## For admins: the full audit log
+
+Admins can export the audit trail for every user.
+
+<Steps>
+
+1. Open **Admin** → **Access & security**.
+2. Switch to the **Full log** tab.
+3. Apply filters, including **Done by** and the date range, then click **Export** and pick **CSV** or **JSON**.
+
+</Steps>
+
+The file is named `audit-<timestamp>` and works the same way as the personal export, including parts. The rows per file come from the API's `Audit:ExportMaxRows` setting (50,000 unless changed). See [Audit Logging](/development/audit-logging/) for what the log records.
+
+## Wrapped recap
+
+Your yearly listening recap can be saved as an image.
+
+<Steps>
+
+1. Open **Listening stats** and go to **Wrapped**.
+2. Click **Export**.
+3. Choose **PNG** or **JPEG** and wait for the preview.
+4. Click **Download PNG** (or **Download JPEG**), or **Share image** if your device supports sharing.
+
+</Steps>
+
+The image is composed on your device and nothing is uploaded. It includes track and artist names, dates and listening stats, and leaves out your account details and any custom background. The numbers behind it, such as your play history, have no data export.
+
+## Not exportable yet
+
+No export exists for these. Each is a gap in Alexandria, not something you have missed:
+
+- **Playlists.** There is no playlist export, such as M3U. The tracks themselves are files, so you can download them, but the playlist order and details stay in Alexandria.
+- **Tags, categories and auto-tag results.** They live only in the database.
+- **Play history and listening statistics** as raw data. Only the Wrapped image exists.
+- **Account data.** There is no "download my data" package for your profile, settings or storage usage.
+- **Preview and streaming renditions.** Generated thumbnails and transcoded streams are not downloadable. Download the original file.
+
+For a complete copy of everything, including this metadata, an administrator needs to back up the instance.
+
+## For admins: back up the whole instance
+
+The in-app exports above work per user and per file. To keep a copy of the entire instance, back up three things together, from the same moment:
+
+- **PostgreSQL**, which holds users, the file index, versions, tags, playlists, audit history and note metadata.
+- **Garage storage**, which holds the file contents, previews and streams.
+- **The settings folder**, which holds `.env`, certificates and the credentials that match the stored data.
+
+Builder, the installer, does not create or schedule backups, and there is no backup script in the repository, so this is a manual procedure built on Docker. The step-by-step commands, the list of volumes and the restore procedure are in [Backup & Restore](/operations/backup-and-restore/).
+
+---
+
+Related: [Files & Versioning](/guides/files-and-versioning/) · [Encryption](/guides/encryption/) · [Backup & Restore](/operations/backup-and-restore/)
