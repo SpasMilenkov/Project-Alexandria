@@ -94,6 +94,29 @@ public static class PathResolver
             comparison);
     }
 
+    // The Alexandria checkout the installer runs from, found from its own folder or the one it
+    // was launched in.
+    public static string? FindSourceRoot(string launchDirectory)
+    {
+        foreach (var start in new[] { AppContext.BaseDirectory, launchDirectory })
+        {
+            var directory = new DirectoryInfo(start);
+
+            for (var depth = 0; depth < 10 && directory is not null; depth++)
+            {
+                if (File.Exists(Path.Combine(directory.FullName, "Backend", "Alexandria.Api", "Dockerfile")) &&
+                    File.Exists(Path.Combine(directory.FullName, "Frontend", "Dockerfile")))
+                {
+                    return directory.FullName;
+                }
+
+                directory = directory.Parent;
+            }
+        }
+
+        return null;
+    }
+
     public static string? ValidateTarget(string absolutePath, bool probeWritable = true)
     {
         if (!Path.IsPathFullyQualified(absolutePath))
