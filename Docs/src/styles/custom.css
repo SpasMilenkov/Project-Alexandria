@@ -2,7 +2,7 @@
     --sl-content-width: 60rem;
 }
 :root, ::backdrop {
-  --sl-hue-base: 255;
+  --sl-hue-base: 100; /* warm neutrals that sit on the app's Cream background */
   --sl-hue-accent: 162; /* emerald */
 }
 
@@ -15,7 +15,7 @@
   --sl-color-gray-5: oklch(26% 0.011 var(--sl-hue-base));
   --sl-color-gray-6: oklch(21% 0.011 var(--sl-hue-base));
   --sl-color-gray-7: oklch(19% 0.012 var(--sl-hue-base));
-  --sl-color-black: #0f1117;
+  --sl-color-black: #1a1a14;
 
   --sl-color-accent-low: oklch(22% 0.06 var(--sl-hue-accent));
   --sl-color-accent: #10b981;
@@ -38,7 +38,7 @@
   --sl-color-gray-5: oklch(87% 0.008 var(--sl-hue-base));
   --sl-color-gray-6: oklch(93% 0.006 var(--sl-hue-base));
   --sl-color-gray-7: oklch(97% 0.004 var(--sl-hue-base));
-  --sl-color-black: oklch(99% 0.004 var(--sl-hue-base));
+  --sl-color-black: #fdfcf8;
 
   --sl-color-accent-low: oklch(95% 0.03 var(--sl-hue-accent));
   --sl-color-accent: oklch(50% 0.13 var(--sl-hue-accent)); 
