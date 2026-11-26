@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Builder.Catalog;
 using Builder.Common;
 using Builder.Configuration;
+using Builder.SystemCheck;
 using Builder.Workflow;
 
 namespace Builder.Docker;
@@ -29,6 +30,21 @@ public interface IDockerService
     // Runs the built transcoding worker's GPU probe on the given devices, through the generated
     // compose file so the test sees exactly the mounts and groups the worker will get.
     ProcessResult ProbeVideoGpus(string target, IReadOnlyList<string> devices, Action<string>? onOutput = null) =>
+        new(1, string.Empty, "GPU probing is unavailable.");
+
+    // The four below work on image names alone, so they need no configured installation.
+    ProcessResult InspectImage(string image, CancellationToken cancellationToken = default) =>
+        new(1, string.Empty, "Image inspection is unavailable.");
+
+    ProcessResult BuildTranscoderImage(string sourceRoot, string image, Action<string>? onOutput = null,
+        CancellationToken cancellationToken = default) => new(1, string.Empty, "Image building is unavailable.");
+
+    ProcessResult RemoveImage(string image, CancellationToken cancellationToken = default) =>
+        new(1, string.Empty, "Image removal is unavailable.");
+
+    // Runs a worker image's GPU probe outside Compose, with the access the compose file would
+    // grant for this one node, so any node can be tried without rewriting an installation.
+    ProcessResult ProbeVideoGpuInImage(string image, RenderNode node, CancellationToken cancellationToken = default) =>
         new(1, string.Empty, "GPU probing is unavailable.");
 
     bool IsHttpRedirectPortOwned(string target, int port) => false;
@@ -208,6 +224,35 @@ public class DockerService : IDockerService
     public ProcessResult ProbeVideoGpus(string target, IReadOnlyList<string> devices, Action<string>? onOutput = null) =>
         RunCompose(target, ["run", "--rm", "--no-deps", "--no-TTY", "--pull", "never", "transpilation-worker", "--probe-gpu", .. devices],
             onOutput, TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(30) * devices.Count, captureOutput: true);
+
+    public ProcessResult InspectImage(string image, CancellationToken cancellationToken = default) =>
+        RunCommand(_launchDirectory, ["image", "inspect", "--format", "{{.Id}}", image],
+            QueryTimeout, cancellationToken, null, captureOutput: true);
+
+    // The same context and Dockerfile the compose template builds the worker from.
+    public ProcessResult BuildTranscoderImage(string sourceRoot, string image, Action<string>? onOutput = null,
+        CancellationToken cancellationToken = default)
+    {
+        var context = Path.Combine(sourceRoot, "Backend");
+        var dockerfile = Path.Combine(context, "Alexandria.Workers.MediaTranspilation", "Dockerfile");
+
+        return RunCommand(_launchDirectory, ["build", "--file", dockerfile, "--tag", image, context],
+            BuildTimeout, cancellationToken, onOutput, captureOutput: false);
+    }
+
+    public ProcessResult RemoveImage(string image, CancellationToken cancellationToken = default) =>
+        RunCommand(_launchDirectory, ["image", "rm", image], QueryTimeout, cancellationToken, null, captureOutput: true);
+
+    public ProcessResult ProbeVideoGpuInImage(string image, RenderNode node, CancellationToken cancellationToken = default) =>
+        RunCommand(_launchDirectory,
+            [
+                "run", "--rm", "--pull", "never", "--network", "none",
+                "--volume", "/dev/dri:/dev/dri:ro",
+                "--device-cgroup-rule", $"c {node.DeviceNumber} rw",
+                "--group-add", node.GroupId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                image, "--probe-gpu", node.Path,
+            ],
+            TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(30), cancellationToken, null, captureOutput: true);
 
     public bool ValidateConfiguration(string target, Action<string>? onOutput = null) =>
         RunCompose(target, ["config", "--quiet"], onOutput).Succeeded;

@@ -115,7 +115,8 @@ public static class Widgets
 
     // Returns null when the user pressed Esc; callers decide whether that
     // means "go back a screen" or "re-render this menu". The detail renderable
-    // describes the highlighted item below the list.
+    // describes the highlighted item below the list. A shortcut returns its item,
+    // which need not be listed, as soon as its key is pressed.
     public static T? AskSingleSelect<T>(
         Shell shell,
         IRenderable header,
@@ -123,9 +124,13 @@ public static class Widgets
         IReadOnlyList<T> items,
         Func<T, string> convert,
         int initialIndex = 0,
-        Func<T, IRenderable?>? detailFor = null) where T : class
+        Func<T, IRenderable?>? detailFor = null,
+        (ConsoleKey Key, string Action, T Item)? shortcut = null) where T : class
     {
         var index = Math.Clamp(initialIndex, 0, items.Count - 1);
+        KeyHint[] hints = shortcut is { } extra
+            ? [.. SelectHints, new KeyHint(extra.Key.ToString(), extra.Action)]
+            : SelectHints;
 
         while (true)
         {
@@ -136,13 +141,18 @@ public static class Widgets
                 list.AddRow(new Markup(ChoiceLine(convert(items[i]), i == index, marker: null, enabled: true)));
             }
 
-            shell.SetMain(Compose(header, title, list, detailFor?.Invoke(items[index])), SelectHints);
+            shell.SetMain(Compose(header, title, list, detailFor?.Invoke(items[index])), hints);
 
             var key = shell.Keys.Wait();
 
             if (shell.HandleGlobalKey(key))
             {
                 continue;
+            }
+
+            if (shortcut is { } pressed && key.Key == pressed.Key)
+            {
+                return pressed.Item;
             }
 
             switch (key.Key)

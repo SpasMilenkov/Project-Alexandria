@@ -34,6 +34,20 @@ Console.CancelKeyPress += cancelHandler;
 
 try
 {
+    if (flow.Context.DiagnoseGpu)
+    {
+        try
+        {
+            return flow.DiagnoseVideoGpu(Console.Out);
+        }
+        catch (OperationCanceledException) when (flow.Context.Cancellation.IsCancellationRequested)
+        {
+            Console.Error.WriteLine("GPU check cancelled.");
+
+            return 130;
+        }
+    }
+
     flow.ExecuteFlow();
 
     if (flow.Context.Cancellation.IsCancellationRequested)
