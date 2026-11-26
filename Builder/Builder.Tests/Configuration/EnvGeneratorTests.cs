@@ -116,6 +116,26 @@ public class EnvGeneratorTests
         rendered.Should().Contain("# --- Garage S3 storage ---");
     }
 
+    // A repair resolves the whole environment again; keys it drops, such as the limits of a
+    // service no longer selected or a GPU that is gone, must leave the file too, or the written
+    // file no longer matches the resolved configuration.
+    [Fact]
+    public void Render_existingFile_dropsKeysNoLongerResolvedAndKeepsTheRest()
+    {
+        var existing = """
+            # user's note
+            DB_PORT='5432' # kept comment
+            VIDEO_GPU_DEVICE='/dev/dri/renderD128'
+            LIMIT_GONE_WORKER_MEMORY='512M'
+
+            """;
+
+        var rendered = EnvGenerator.Render(new Dictionary<string, string> { ["DB_PORT"] = "5433" }, existing);
+
+        rendered.Should().Contain("# user's note").And.Contain("DB_PORT='5433' # kept comment");
+        rendered.Should().NotContain("VIDEO_GPU_DEVICE").And.NotContain("LIMIT_GONE_WORKER_MEMORY");
+    }
+
     [Fact]
     public void MergeWithExisting_keepsUserValues_andFillsOnlyMissingOrPending()
     {

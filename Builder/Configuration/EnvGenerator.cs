@@ -153,7 +153,10 @@ public static class EnvGenerator
                     continue;
                 }
 
-                var value = values.TryGetValue(line.Key, out var replacement) ? replacement : line.Value!;
+                // The values are the whole resolved environment, so a key they no longer hold was
+                // dropped on purpose, such as the limits of a service no longer selected.
+                if (!values.TryGetValue(line.Key, out var value)) continue;
+
                 builder.Append(line.Key).Append('=').Append(Encode(value)).AppendLine(line.Comment);
                 written.Add(line.Key);
             }
