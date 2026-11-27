@@ -280,7 +280,7 @@ const serverError = computed(() => {
       title: "This action isn't allowed for your account.",
     },
     404: {
-      hint: "If you just received your invite, try logging in again from the start.",
+      hint: "If your account was just created, try logging in again from the start.",
       title: "Account not found.",
     },
     409: {

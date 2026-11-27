@@ -307,7 +307,7 @@ const tourFeatures: TourFeature[] = [
     tips: [
       "Filter by action type to quickly narrow down events",
       "Each log entry links back to the affected file",
-      "Admins can see activity across all users",
+      "Your library history is private; admins only see sign-ins, accounts and system events",
     ],
     title: "Access History",
   },

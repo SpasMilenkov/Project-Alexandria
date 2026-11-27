@@ -37,6 +37,10 @@ internal sealed class AddRuleValidator : Validator<AddRuleRequest>
     {
         RuleFor(x => x.PolicyId).NotEmpty();
         RuleFor(x => x.ActionType).IsInEnum();
+        // No backup job exists yet, so a new rule would never do anything
+        RuleFor(x => x.ActionType)
+            .NotEqual(PolicyActionType.Backup)
+            .WithMessage("Backup rules aren't available yet.");
         RuleFor(x => x.TriggerType).IsInEnum();
         RuleFor(x => x.TriggerValue).NotEmpty().MaximumLength(64);
         RuleFor(x => x.Priority).GreaterThanOrEqualTo(0);

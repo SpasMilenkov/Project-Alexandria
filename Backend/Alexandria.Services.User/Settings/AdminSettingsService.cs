@@ -20,18 +20,6 @@ public partial class AdminSettingsService(
         SlidingExpiration = TimeSpan.FromMinutes(30)
     };
 
-    public Task<UploadPolicyValue> GetUploadPolicyAsync(CancellationToken ct = default)
-        => GetAsync<UploadPolicyValue>(AdminSettingKeys.UploadPolicy, ct);
-
-    public async Task SetUploadPolicyAsync(UploadPolicyValue value, Guid updatedBy, CancellationToken ct = default)
-    {
-        Validate(value);
-        await UpsertAsync(AdminSettingKeys.UploadPolicy, value, updatedBy, ct);
-    }
-
-    public Task ResetUploadPolicyAsync(Guid updatedBy, CancellationToken ct = default)
-        => SetUploadPolicyAsync(new UploadPolicyValue(), updatedBy, ct);
-
     // The range is only enforced on save, and the purge deletes everything older than this, so a
     // value written straight to the table (0, negative, absurdly large) must never reach it as-is.
     public async Task<AuditRetentionValue> GetAuditRetentionAsync(CancellationToken ct = default)

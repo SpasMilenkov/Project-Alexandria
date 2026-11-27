@@ -2,6 +2,7 @@ using Alexandria.Common;
 using Alexandria.Common.Exceptions;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Policies;
 using Microsoft.Extensions.Logging;
 
@@ -36,6 +37,13 @@ public sealed partial class PolicyDispatcher(
         {
             if (ev.IsNewVersion && !rule.ApplyOnNewVersion) continue;
             if (!PolicyRuleTrigger.Matches(rule.TriggerType, rule.TriggerValue, ev.MimeType)) continue;
+
+            // Older backup rules are kept, but there is no backup job to run them yet
+            if (rule.ActionType == PolicyActionType.Backup)
+            {
+                LogBackupRuleSkipped(logger, rule.Id, ev.FileId);
+                continue;
+            }
 
             try
             {
