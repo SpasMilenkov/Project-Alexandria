@@ -503,7 +503,10 @@ const openDelete = (ids: string[]) => (activeModal.value = { ids, type: "delete"
 const submitCreate = async (data: CreateUserSchema) => {
   try {
     await createUserMutation(data);
-    toast.success(`Created @${data.userName}`, "They'll receive an invitation to sign in.");
+    toast.success(
+      `Created @${data.userName}`,
+      "Share the temporary password with them so they can sign in.",
+    );
     closeModal();
   } catch (err) {
     toast.error(`Couldn't create @${data.userName}`, err);
