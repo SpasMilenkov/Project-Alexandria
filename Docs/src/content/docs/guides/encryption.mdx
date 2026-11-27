@@ -1,0 +1,63 @@
+---
+title: Encryption
+description: How optional client-side file encryption works, what it blocks, and why the file password matters.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Alexandria can encrypt a file **in your browser** before it is uploaded and decrypt it **in your browser** when you download it. The server stores only ciphertext. It never sees the file's contents or the password.
+
+Encryption is **optional and chosen per file** at upload time. It is not an instance-wide switch, and it does not use your sign-in password.
+
+{/* TODO screenshot: decryption prompt on file download */}
+
+## Encrypting a file
+
+1. In the [upload dialog](/guides/uploads-and-previews/#files), find the file's row and press the lock button, **Encrypt this file**.
+2. Enter a **Password** and **Confirm password**. A strength bar and checklist show the requirements: 16 or more characters, an uppercase letter, a lowercase letter, a number and a special character. All requirements must be met before **Upload** is enabled.
+3. Optionally add a **Hint** ("Hint (optional, stored unencrypted)").
+4. Upload. The file goes through an **Encrypting** stage first, and the row reads "Uploaded, encrypted" when done.
+
+Each encrypted file has its own password. You can use a different one for every file, or the same one.
+
+Limits:
+
+- Only files **under 500 MB** can be encrypted. Larger files show a notice ("Encrypt larger files before uploading").
+- Only the **single-file upload** offers encryption. Folder and archive uploads are not encrypted.
+- Encryption needs a secure (HTTPS) connection, because it uses the browser's built-in cryptography.
+
+## How it works
+
+The browser derives a key from your password with PBKDF2 (SHA-256, 800,000 iterations, a random 128-bit salt), then encrypts with AES-256-GCM using a random 96-bit IV. The slow derivation is deliberate: it makes guessing passwords expensive. The salt, IV, integrity tag, iteration count and your optional hint are stored next to the file. These are not secret. Your password and key never leave your device.
+
+## Opening an encrypted file
+
+Encrypted files show a lock icon in the explorer, in the details drawer ("Encrypted") and in the version list ("This version is encrypted").
+
+When you **Download** one, an **Encrypted file** dialog asks for "the password used when this file was uploaded". Use **Show hint** if you set one, then **Decrypt & Download**. Decryption happens in your browser; a wrong password shows an error and lets you try again.
+
+## What encryption costs you
+
+Because the server cannot read an encrypted file, it also cannot work with it:
+
+- **No previews or thumbnails.** The file shows a generic icon.
+- **No text search inside it.** It can be found by name only. See [Search & Documents](/guides/search-and-documents/).
+- **No properties extraction.** Camera and document details are not read, and encrypted images are left out of the [gallery](/guides/gallery-and-photos/).
+- **Encrypted notes cannot be edited.** If an encrypted markdown file is opened in the note editor it shows "Encrypted notes can't be opened yet".
+- **Share links serve ciphertext.** The recipient gets the encrypted bytes, and the share page does not decrypt. See [Sharing Links](/guides/sharing-links/#encrypted-files).
+- **No deduplication.** Identical content is not shared with other copies.
+
+<Aside type="caution">
+  **The file password is the key.** If it is lost, the file cannot be recovered, not by you and not by the server administrator. There is no reset. Write down the hint or store the password in a password manager.
+</Aside>
+
+- Changing your account password does not affect encrypted files. They stay tied to the password chosen at upload.
+- A backup of an encrypted file is safe from whoever holds it, as long as the password stays secret.
+
+## What is not encrypted
+
+Encryption protects file **contents**. File names, sizes, folder structure, tags, version history and the optional hint are visible to the server, which is how listing, tagging and history work.
+
+---
+
+Related: [Uploads & Previews](/guides/uploads-and-previews/) · Technical detail: [Upload Pipeline](/development/upload-pipeline/)

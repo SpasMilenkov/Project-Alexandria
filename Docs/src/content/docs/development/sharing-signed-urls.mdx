@@ -1,0 +1,41 @@
+---
+title: Sharing & Signed URLs
+description: How share links work — tokens, access limits, version pinning, and revocation.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Share links let users expose a single file publicly without an account. The `SignedUrl` entity is application-level (not S3 presigning) — the token is validated by Alexandria, then a short-lived presigned GET is minted on demand.
+
+## Data Model
+
+| Field | Purpose |
+|---|---|
+| `Token` | Opaque public identifier embedded in the share URL |
+| `ExpiresAt` | Hard expiry |
+| `MaxAccessCount` / `AccessCount` | Optional download cap; counter incremented per access with `LastAccessedAt` |
+| `CreatorId` | Owner of the link (`CanShare` policy required to create) |
+| `FileVersionId` + `PinnedVersion` | Optional **version pinning** — link serves that exact version instead of the file's active one |
+| `DeletedAt` | Soft-delete = revoked |
+
+## Endpoints
+
+Under `Features/Storage/SignedUrls/`:
+
+| Endpoint | Purpose |
+|---|---|
+| `CreateShareLink` | Mint a token (expiry/access limits/version pin as requested) |
+| `GetSharedFile` | Public metadata lookup by token |
+| `DownloadSharedFile` | The actual bytes — validates token, enforces expiry + access count, then redirects/streams via presigned GET |
+| `GetShareLinksForFile` | Owner-facing list of active links for a file |
+| `RevokeShareLink` | Soft-delete the link; shared URLs die immediately |
+
+## Access Semantics
+
+- Anonymous requests carry only the token — no user context; every authorization decision derives from the link row itself
+- Expired or over-count links behave identically to unknown tokens (no information leak)
+- Revocation is immediate because validation happens server-side per request, never at presign time alone
+
+---
+
+<Aside type="note">**Verified against:** `Data.Models/SignedUrl.cs`, `Features/Storage/SignedUrls/` endpoint listing.</Aside>

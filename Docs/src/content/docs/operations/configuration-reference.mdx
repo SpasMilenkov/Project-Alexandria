@@ -1,0 +1,143 @@
+---
+title: Configuration Reference
+description: Every environment variable and config file explained.
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Alexandria is configured through three surfaces:
+
+| Surface | File | Who reads it |
+|---|---|---|
+| Environment | `.env` (from `.env.template`) | Docker Compose — wires credentials into all services |
+| Object storage | `garage.local.toml` (from `garage.template.toml`) | The Garage container |
+| Backend services | `appsettings.json` / `appsettings.Production.json` per project | API + workers |
+
+Copy each template to the real file and fill it in. **Never commit any of them.**
+
+<Aside type="caution">
+  Anyone with your <code>.env</code> contents owns your instance — database, sessions, storage, everything.
+</Aside>
+
+## `.env` Reference
+
+### Database
+
+| Variable | Notes |
+|---|---|
+| `DB_NAME` | PostgreSQL database name |
+| `DB_USERNAME` | Database user |
+| `DB_PASSWORD` | Database password — protects everything |
+| `DB_PORT` | Defaults to 5432; only change with reason |
+
+### Admin Account
+
+Seeds your first admin at startup (`ADMIN_EMAIL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`). All three required — this is what you log in with on day one.
+
+### API
+
+| Variable | Notes |
+|---|---|
+| `BASE_URL` | Public base URL of your instance (e.g. `https://192.168.x.x`). Used when building externally-reachable URLs |
+
+### RabbitMQ
+
+Usernames and passwords are provisioned per service — one account each, least-privilege:
+
+| Username variable | Default | Password variable |
+|---|---|---|
+| `RABBITMQ_USER` | `alexandria` | `RABBITMQ_PASSWORD` |
+| `API_RABBITMQ_USER` | `api_user` | `API_RABBITMQ_PASSWORD` |
+| `RABBITMQ_DOCUMENT_WORKER` | `document_worker_user` | `DOCUMENT_WORKER_RABBITMQ_PASSWORD` |
+| `RABBITMQ_MEDIA_WORKER` | `media_worker_user` | `MEDIA_WORKER_RABBITMQ_PASSWORD` |
+| `RABBITMQ_TRANSPILATION_WORKER` | `media_transpilation_worker` | `TRANSPILATION_WORKER_RABBITMQ_PASSWORD` |
+| `RABBITMQ_MEDIA_METADATA_WORKER` | `media_metadata_worker_user` | `MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD` |
+| `RABBITMQ_LYRICS_WORKER` | `lyrics_worker` | `LYRICS_WORKER_RABBITMQ_PASSWORD` |
+| *(Essentia classificators)* | fixed user in compose | `ESSENTIA_WORKER_RABBITMQ_PASSWORD` |
+
+`RABBITMQ_VHOST` isolates Alexandria's messages — leave as `alexandria`.
+
+### Garage S3
+
+Tokens you generate yourself must match `garage.local.toml`; bucket keys are generated on first run:
+
+| Variable | Where it comes from |
+|---|---|
+| `GARAGE_RPC_SECRET` | You — `openssl rand -hex 32`, must match `rpc_secret` in garage.toml |
+| `GARAGE_ADMIN_TOKEN` | You — must match `admin_token` in garage.toml |
+| `GARAGE_S3_METRICS_TOKEN` | You — must match `metrics_token` in garage.toml |
+| `GARAGE_S3_ACCESS_KEY` / `SECRET_KEY` | Generated later — copy from `init-output/` after first Compose run (API's master key) |
+| `GARAGE_S3_WORKER_ACCESS_KEY` / `SECRET_KEY` | Same — worker key |
+| `GARAGE_S3_TRANSPILATION_WORKER_ACCESS_KEY` / `SECRET_KEY` | Same — transpilation worker key |
+| `GARAGE_S3_PUBLIC_ENDPOINT` | Public URL of Garage's S3 API — browser uploads/downloads go here directly (e.g. `https://192.168.x.x`) |
+
+<Aside type="note">
+  Leave the key fields as <code>placeholder</code> initially. The garage-init container writes real keys to <code>init-output/</code> (or check <code>docker logs alexandria-garage-init</code>); copy them in and restart the affected services.
+</Aside>
+
+### Security
+
+| Variable | Generate with |
+|---|---|
+| `JWT_SECRET` | `openssl rand -base64 64` — signs session tokens |
+| `JWT_ISSUER` / `JWT_AUDIENCE` | Any identifier, e.g. `Alexandria` |
+| `CSRF_SECRET` | `openssl rand -base64 32` — protects state-changing requests |
+
+### CORS
+
+| Variable | Meaning |
+|---|---|
+| `CORS_ALLOWED_ORIGINS__0` / `__1` | Origins allowed to call the API — typically `https://localhost` plus `https://192.168.x.x` |
+| `CORS_ORIGIN` | Origin browsers upload from — must match one of the above; applied to the storage bucket's CORS policy |
+
+Local IP tip: `ip route get 1 | awk '{print $7; exit}'`
+
+### Grafana
+
+`GRAFANA_USER` (default `admin`) + `GRAFANA_PASSWORD` (`openssl rand -base64 16`) for the monitoring dashboards.
+
+### Encryption
+
+`PBKDF2_ITERATION_COUNT` (default 800000) — iterations used when deriving file encryption keys client-side. Higher = slower unlock, stronger brute-force resistance.
+
+### Feature Flags
+
+| Variable | Default | Effect |
+|---|---|---|
+| `STREAMING_ENABLED` | `false` | Music/video streaming subsystem |
+| `LYRICS_ENABLED` | `true` | Automatic lyrics fetching (see [Lyrics](/reference/lyrics/)) |
+
+<Aside type="caution">
+  <code>AUTOTAGGING_ENABLED</code> and <code>AUDIO_ENRICHMENT_MODEL</code> exist in the template but are not wired into the compose files yet — auto-tagging currently activates via the appsettings/compose flag (<code>Features:Autotagging</code>) and the backbone via <code>Essentia:Backbone</code>.
+</Aside>
+
+### Monitoring
+
+`POSTGRES_EXPORTER_PASSWORD` — credentials for the PostgreSQL metrics exporter (monitoring profile).
+
+## `garage.toml` Quick Reference
+
+| Key | Set to |
+|---|---|
+| `metadata_dir`, `data_dir` | Stable paths with enough free space |
+| `db_engine` | `lmdb` (recommended) |
+| `replication_factor` | `1` for single node |
+| `compression_level`, `block_size` | Defaults fine (`0`, `4M`) |
+| `rpc_secret` | Must equal `GARAGE_RPC_SECRET` |
+| `admin_token` / `metrics_token` | Must equal their `.env` counterparts |
+
+Everything else (RPC bind addresses, S3 API ports) has working defaults.
+
+## Backend `appsettings`
+
+Each backend project needs an `appsettings.json` next to its template — full JSON listings are in [Manual Installation](/getting-started/manual-installation/#backend-configuration). Notable keys beyond secrets:
+
+- `Jwt:AccessTokenExpiryMinutes` / `RefreshTokenExpiryDays` — session lifetimes (15 min / 7 days)
+- `HealthChecks:Workers[]` — which worker health endpoints the API probes
+- `Features:Autotagging` — enables the audio-analysis tagging pipeline
+- `Monitoring:Enrichment:StuckThresholdMinutes` — stuck-batch detection window
+- `DocumentTextSweep:*` — pacing of the document text sweep in the document worker: `Enabled` (`true`), `BatchSize` (`10`), `BatchDelaySeconds` (`2`), `IdleDelaySeconds` (`30`, also how long a new upload waits to become searchable), `RetryFailedAfterHours` (`6`), `MaxAttempts` (`3`). The API reads `MaxAttempts` too, for the admin page, so set it on both or neither
+
+---
+
+Related: [Manual Installation](/getting-started/manual-installation/) walks through creating these files step by step · [Backup & Restore](/operations/backup-and-restore/) covers protecting the data these files configure.

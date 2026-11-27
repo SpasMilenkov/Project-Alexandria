@@ -1,0 +1,376 @@
+---
+title: Using the Builder
+description: Install, change, upgrade and diagnose Alexandria with the Builder, the terminal setup tool in the source checkout.
+---
+
+import { Aside, Steps, FileTree } from '@astrojs/starlight/components';
+
+The Builder is a standalone .NET 10 terminal application that lives in the `Builder/` folder of the source checkout. It installs Alexandria on one machine and keeps that installation in shape afterwards. It does not run Alexandria itself: it builds the Docker images from your source code, writes the configuration, starts the stack with Docker Compose and then checks that everything came up.
+
+For the short path, see [Installation](/getting-started/installation/). This page covers every screen, every choice and the maintenance tasks.
+
+<Aside type="caution">
+The Builder targets a single Linux x64 machine with a local Docker engine. It was developed and tested on Ubuntu 24.04. It checks for Linux x64 with glibc and refuses to continue on anything else, including Alpine (musl), macOS, Windows and ARM. It does not install tools, clone the repository, change your firewall or router, or add certificates to any device's trust store.
+</Aside>
+
+## What the Builder does
+
+- Checks Docker and the machine's resources before touching anything.
+- Generates every password and secret, the HTTPS certificate and the broker, storage and proxy configuration.
+- Builds the application images from your checkout and starts the services you selected.
+- Verifies the result: every selected service, the HTTPS address and a fresh administrator sign-in.
+- Can be run again on the same settings folder to change features, the address or certificate, or to rebuild after a source update. It will not overwrite credentials or data.
+- Can test which GPUs can encode video for the transcoding worker.
+
+Nothing is written until you confirm the final summary screen.
+
+## Prerequisites
+
+| Need | Detail |
+| --- | --- |
+| Linux x64 with glibc | Ubuntu 24.04 is the tested target. |
+| Docker Engine and the `docker compose` plugin | Local daemon, usable by your account without `sudo`. The standalone `docker-compose` command is not accepted. A remote context (`DOCKER_HOST` or a Docker context pointing at SSH or TCP) is refused, because the generated stack mounts local folders. The daemon must report Linux and amd64. |
+| .NET 10 SDK | Needed to run the Builder from source. The pinned SDK in `Builder/global.json` is 10.0.0 and rolls forward to newer major versions. The first run restores the Spectre.Console package from NuGet, so it needs network access unless the packages are already restored. |
+| The complete source checkout | `Backend/`, `Frontend/`, `Builder/`, `nginx/`, `rabbitmq/`, `classificators/`, `scripts/` and the rest. Keep it after installing: the generated Compose file mounts some files from it. |
+| A stable address | A LAN IPv4 address or a DNS name that resolves on every client. IPv6, `localhost` and loopback addresses are rejected. |
+| A free TCP port | 443 by default. Port 80 is optional (see [Network](#network-access)). |
+| Network access for the first build | Image registries and package repositories, unless every layer is already cached. Lyrics lookup needs outbound HTTPS to `lrclib.net`. |
+| Disk | Space for Docker images, stored files, temporary processing, models and backups. The system check warns below 10 GB free on Docker's data filesystem. |
+
+The Builder reports a missing prerequisite and explains it; it never installs one.
+
+## Launch it
+
+Run the Builder from the repository root, in an interactive terminal:
+
+```bash
+dotnet run --project Builder/Builder.csproj
+```
+
+A plain launch opens on an animated city splash when the terminal is large enough and supports Unicode and colour. Press any key to start. The splash is skipped when you pass any argument (see [Command line](#command-line)).
+
+The Builder's own source is used for the build, so keep the whole checkout together. Copying only `Builder.csproj` elsewhere does not work: the project links `Backend/Alexandria.Common/Auth/AccountValidationRules.cs` and uses `Builder/Directory.Packages.props`.
+
+<Aside type="note">
+`Builder/README.md` also describes publishing the Builder as a native executable. That is a build option, not a download: there is no published binary or image registry release. A native build must stay next to its `Templates/Local` folder, and the source checkout is still needed for Docker builds.
+</Aside>
+
+### Keys
+
+Every screen shows its own key hints. The common ones:
+
+| Key | Action |
+| --- | --- |
+| Up and Down | Move in a list. |
+| Space | Toggle a feature on the features screen. |
+| Enter | Accept or continue. |
+| Esc | Go back one screen. Your entries are kept. |
+| Ctrl+U | Clear a text field. |
+| T | Switch the colour theme (Mint, the default, then Papyrus and Aurora). |
+| PageUp and PageDown | Scroll a screen that is taller than the terminal. |
+| Ctrl+C | Cancel and restore the terminal. |
+
+The theme choice is saved in `alexandria-installer/theme.json` under your user configuration folder (normally `~/.config`). A broken or unwritable preference never blocks setup.
+
+## The setup flow
+
+The wizard has twelve steps, shown in a sidebar next to a live memory estimate. The welcome screen offers three choices: set up Alexandria, change the look, and "Production deployment", which is marked as coming soon and just exits. Press D on the welcome screen to open the [video GPU check](#gpu-and-video-encoding).
+
+<Steps>
+
+1. **Welcome**
+
+   Choose "Set up Alexandria on this machine". Nothing is installed until the final summary is confirmed.
+
+2. **Where to install**
+
+   You choose two folders.
+
+   - **Alexandria source folder**: the checkout the images are built from. It is only read, never modified. The Builder proposes the checkout it is running from and checks that the files needed for your selection exist there.
+   - **Installation settings folder**: where the generated files live. It defaults to the checkout itself, so choose a separate permanent folder if you prefer to keep generated files out of the repository.
+
+   Relative paths resolve from the directory where you launched the Builder, `~` expands to your home folder, and quotes around a path are accepted. The settings folder must be a real directory, not a symlink or junction, and must be writable. A confirmation screen shows both resolved paths. If the settings folder already holds an Alexandria configuration, it is inspected rather than overwritten, and the run becomes a [repair](#re-running-the-builder).
+
+   Database records and uploaded files do not live in the settings folder: they use Docker-managed named volumes.
+
+3. **Features**
+
+   Six toggles, then a choice of audio analysis model. See [Choosing features](#choosing-features).
+
+4. **System check**
+
+   The Builder checks the host platform, Docker, the Compose plugin, the daemon connection, the daemon's platform, then measures CPU, memory, free disk on Docker's data filesystem and looks for a usable video GPU. A failed Docker check offers `R` to check again, `Esc` to go back or Enter to exit. Low memory is a warning, and you can continue anyway. See [Resource limits](#resource-limits).
+
+5. **File storage**
+
+   Enter the capacity for the Garage object store layout, in whole GB (default 10, minimum 1). This sizes the store's layout only. It does not reserve disk space and is not a per-user quota. On a repair this screen only shows the existing layout, which is preserved.
+
+6. **Network access**
+
+   See [Network access](#network-access).
+
+7. **HTTPS certificate**
+
+   See [HTTPS certificates](#https-certificates).
+
+8. **Audio models**
+
+   Skipped when audio analysis is off. See [Audio analysis models](#audio-analysis-models).
+
+9. **Your account**
+
+   The administrator email, username and password, with the password entered twice. The password needs at least six characters with an uppercase letter, a lowercase letter, a number and a symbol. The username is suggested from the email and may not contain spaces. On a repair this screen only shows the existing email, because the existing password and roles are preserved.
+
+10. **Summary**
+
+    The full picture before anything is written: account, new setup or repair, Docker project name, services, memory estimate, resource limits, video encoding plan, model sourcing, address, certificate mode and the files that will be created. Press A to see every component with its caps, R to switch the memory chart style, Esc to go back, Enter to start.
+
+11. **Installing**
+
+    See [What deployment does](#what-deployment-does).
+
+12. **Done**
+
+    Shows the HTTPS address, the sign-in check result, the settings path and the installer log. Press D for the details and ready-made management commands. Closing the Builder leaves Alexandria running.
+
+</Steps>
+
+## Choosing features
+
+Core storage, the database, the message broker, the API, the web interface, the proxy, media metadata and playlist synchronisation are always installed. The toggles add to that.
+
+| Toggle | Default | What it adds |
+| --- | --- | --- |
+| Media previews | On | Thumbnails, preview images and short video clips. Descriptive audio and video metadata is still collected when off. |
+| Document previews | On | The document preview worker, for formats such as PDF. |
+| Adaptive streaming | On | The transcoding worker that converts audio and video to streamable representations. Turning it off stops new conversions but keeps existing playback, representations and playlists. |
+| Automatic tagging | On | Master switch for audio analysis with the model you pick next. Off installs no coordinator and no classifier. |
+| Lyrics fetching | On | The lyrics worker. Needs outbound HTTPS. |
+| Monitoring dashboard | Off | Prometheus, Grafana, cAdvisor, a database exporter, Alloy and Loki. Grafana is served at `/monitoring/` on the same HTTPS address and keeps its own sign-in. |
+
+The detail pane under each toggle shows which services it starts and how much memory they are allowed.
+
+The audio analysis model is **Off**, **Effnet** (genre and mood, the default) or **MAEST** (finer genre labels plus mood, slower and heavier). Only one classifier is ever installed. Disabling a feature does not purge queued work; that work is retained for when you enable it again.
+
+### Memory planning
+
+These are planning allowances including headroom, not measured minimums or reservations.
+
+| Selection | Allowance |
+| --- | --- |
+| Core services | 4096 MB |
+| Document previews | 1024 MB |
+| Adaptive streaming | 1024 MB |
+| Audio analysis (coordinator 1024 MB plus one classifier 2048 MB) | 3072 MB |
+| Lyrics | 512 MB |
+| Monitoring | 1536 MB |
+
+The system check compares the total against what Docker reports, falling back to the machine's totals when Docker does not report limits. It recommends at least 2 CPU cores, or 4 with audio analysis.
+
+### Resource limits
+
+Every run recomputes CPU and memory limits for each container, written to `LIMIT_*` keys in `.env`, so that no mix of jobs can starve the host. It keeps 15% of memory (at least 2 GB and at most 4 GB) and one CPU core (two on machines with eight or more cores) free for the host, and shrinks the heavy workers to fit when the machine is small. Edits to `LIMIT_*` keys are overwritten by the next run.
+
+## Audio analysis models
+
+When analysis is on, the classifier needs model files. The Audio models screen offers two ways to get them:
+
+- **Existing local files (offline)**: you give a folder that already holds the files. The Builder copies and verifies them. Nothing is downloaded.
+- **Download missing or corrupt models (HTTPS)**: reuses verified files, downloads only what is missing from `essentia.upf.edu`, and checks pinned sizes and SHA-256 hashes before keeping each file. Downloads happen during installation, after you confirm the summary, and need no Python.
+
+| Model | Files | Disk | Worker memory cap |
+| --- | --- | --- | --- |
+| Effnet | 17 | about 24 MB | 2 GB |
+| MAEST | 17 | about 370 MB | 2 GB |
+
+The wizard prints sizes in MiB, so it shows roughly 23 MB and 353 MB for the same files. MAEST also needs the shared Effnet embeddings and mood files, which is why its count is the same. Permission to pull container images does not enable model downloads, and the choice is saved for later repairs. The classifier handles one job at a time. It loads its models when work arrives and unloads them after five minutes idle; set `ESSENTIA_IDLE_UNLOAD_SECONDS` in `.env` to change the delay, or to `0` to keep them loaded.
+
+To prepare a cache before running the Builder, `classificators/essentia/download-models.sh` does the same job (it needs Python 3 and downloads only with `--download`):
+
+```bash
+bash classificators/essentia/download-models.sh '/absolute/path/to/model-cache' effnet --download
+```
+
+Use `maest` in place of `effnet` for the other backbone, then point the Audio models screen at that folder.
+
+## Network access
+
+Alexandria publishes one HTTPS port for the website, the API, file transfers and optional monitoring. Every other service stays on Docker's internal networks, and Grafana has no port of its own.
+
+Enter the machine's LAN address or a DNS name, without a scheme or port. The Builder suggests the first active IPv4 address. Keep this address stable (reserve it in your router for an IP, or make sure the name resolves everywhere), because it is baked into the generated origin, signed file URLs, CORS settings and the certificate.
+
+The default port is 443. If it is busy, the screen offers to pick a free one (the first fallback is 8443) or to enter your own. The resulting address, for example `https://192.168.0.106:8443`, is what clients use.
+
+Port 80 is published only when it is free, and only to forward plain `http://` requests to the HTTPS address. If it is taken, setup continues without the redirect. Plain HTTP sent to the HTTPS port is also redirected.
+
+## HTTPS certificates
+
+Alexandria needs HTTPS for sign-in and the encrypted file features. Choose one of two modes:
+
+- **Generate and reuse an installation certificate** (default): the Builder creates a local certificate authority (valid ten years) and a server certificate for your address (valid one year), all inside the settings folder. Repeat runs reuse the same authority, so clients trust it once. If you change the address, a new server certificate is issued under the same authority.
+- **Import an existing certificate and key**: give the paths to a PEM certificate and an unencrypted PEM private key that match the address. Their contents are copied into the settings folder. On a repair you can keep the saved import.
+
+A generated certificate is not trusted by other devices until you install the authority on each one. Follow `nginx/CLIENT-TRUST.txt` and the [first steps](/getting-started/first-steps/) page, and transfer only the public `local-ca.crt`. Never copy `local-ca.key`, `server.key` or `.env` to a client. To renew, rerun the Builder during the last 30 days before the server certificate expires.
+
+## What deployment does
+
+After you confirm the summary, the installing screen runs these stages and shows the current step, elapsed time and recent output. The full output goes to a log in `installer-logs/`.
+
+1. Check the supported platform.
+2. Write the configuration files.
+3. Validate the generated Compose file against the services you reviewed.
+4. Prepare and verify the audio models (when analysis is on).
+5. Build the images from source. The first run takes a while.
+6. Test the video GPU in the built worker image (only when a GPU was detected).
+7. Start storage and messaging.
+8. Persist the generated storage keys into `.env`.
+9. Start the API, initialise the database and create the administrator account.
+10. Start the remaining services.
+11. Check every selected service is ready. Containers without a healthcheck are judged by their running state.
+12. Check metrics and logs (monitoring only).
+13. Check the HTTPS address.
+14. Check the administrator account: a fresh install signs in over HTTPS to prove it. A repair keeps the existing account and asks you to sign in yourself.
+15. Save the completed installation.
+
+Each readiness wait gives up after five minutes. Ctrl+C stops the Builder's own child commands, but containers that already started keep running.
+
+### If a stage fails
+
+The Builder stops and offers a menu: show container status, retry that stage (the label names what is retried), inspect the installation log, inspect a service's logs, return to the summary, or exit preserving services. Press L for the full log. Retrying keeps work already verified in this session, such as built images and prepared models, and stops if the settings changed in the meantime. Credentials and data are never reset by a retry.
+
+## Files the Builder writes
+
+<FileTree>
+
+- your-settings-folder/
+  - .env  all settings and secrets, readable by your user only
+  - docker-compose.yml  generated, secret-free (values are `${VAR}` references)
+  - garage.toml  storage configuration
+  - alexandria-config.json  non-secret record of your choices, project name and volume names
+  - .alexandria-generation.json  checkpoint that lets repairs detect partial writes
+  - INSTALLATION.txt  address, paths, project name, volumes and ready-made management commands
+  - nginx/
+    - nginx.conf
+    - CLIENT-TRUST.txt  how to trust the certificate on a device
+    - certs/  server.crt, server.key, local-ca.crt, local-ca.key (generated mode)
+  - rabbitmq/
+    - rabbitmq.conf
+    - definitions.json
+  - prometheus/  prometheus.yml and a secrets/ token file (monitoring only)
+  - models/  verified audio model cache (analysis only)
+  - init-output/  temporary storage bootstrap handoff
+  - installer-logs/  one log per run, secrets redacted
+
+</FileTree>
+
+`INSTALLATION.txt` contains no passwords. The temporary file `init-output/garage-credentials.env` is deleted as soon as its keys are verified in `.env`, and a small receipt stops later restarts from exporting a second copy.
+
+The `.env` file holds the generated database, broker, JWT, CSRF and storage secrets, the administrator credentials and the feature flags. It is regenerated on each run with your established secrets preserved. Keys you add yourself are kept. `LIMIT_*` and `VIDEO_*` keys are managed by the Builder.
+
+## Command line
+
+```text
+Builder [--settings <installation-settings-folder>]
+Builder --diagnose gpu [--settings <installation-settings-folder>]
+Builder --help
+```
+
+| Argument | Effect |
+| --- | --- |
+| none | Opens the wizard on the welcome splash. |
+| `--settings <folder>` | Preselects an existing installation (and the source folder saved in it). The wizard still walks every screen and asks for the final confirmation. Relative paths resolve from your current directory. |
+| `--diagnose gpu` | Prints the video GPU report as plain text and exits, without the wizard. Add `--settings` to name the installation to check. Without it, the current folder is used if it holds `alexandria-config.json`, otherwise the checkout the Builder runs from. |
+| `--help` or `-h` | Prints the usage text. |
+
+Any other arguments print the usage text to the error stream and exit with status 2.
+
+Exit codes: `0` on success, `1` if setup did not complete (or, for `--diagnose gpu`, if the installed GPU fails, the test image cannot be built or no test could run), `2` for bad arguments or an unreadable configuration, and `130` when you cancel.
+
+Examples:
+
+```bash
+dotnet run --project Builder/Builder.csproj -- --settings '/home/me/alexandria/settings'
+dotnet run --project Builder/Builder.csproj -- --diagnose gpu --settings '/home/me/alexandria/settings'
+```
+
+## Re-running the Builder
+
+Run it again with the same settings folder to change an installation. The Builder recognises the folder by its `.env`, `alexandria-config.json` and checkpoint, switches to repair mode, and pre-fills the screens from what is saved.
+
+<Steps>
+
+1. Back up first. See [Operations, recovery and backups](/guides/operations/).
+
+2. Launch with `--settings`, or choose the same settings folder on the second screen.
+
+3. Change what you need: toggle features, pick another audio model, change the address or port, or switch the certificate mode. The Builder recomputes resource limits and the video encoder choice for the current machine and selection.
+
+4. Review the summary, which marks the run as "Repair existing setup" and shows whether the current services are ready, then confirm.
+
+</Steps>
+
+What a repair preserves: every generated credential, the administrator account and password, the Docker project name and volume names, the certificate authority, the Garage layout size and all stored data. It refuses to continue, with a message, when it cannot safely match the folder to its Docker resources, such as a missing volume or an ambiguous older installation.
+
+A repair is not a way to move an installation. The project and volume identity, saved paths and Docker ownership labels must move together, so use the relocation steps in `scripts/installer/README.md`.
+
+### Upgrading to a newer version
+
+The Builder never fetches source. Update your checkout yourself, for example with `git pull`, take a backup, then run the Builder against the same settings folder. Every run rebuilds the images (Docker's cache makes unchanged layers quick), restarts the services and runs all the checks again. The source revision and Builder version are recorded in `alexandria-config.json` and `INSTALLATION.txt`.
+
+<Aside type="caution">
+There is no automatic backup and no way to roll back a database change. A newer API can migrate the database when it starts, so going back to older images afterwards is not safe. Restore a matching backup of the whole settings folder and all volumes instead.
+</Aside>
+
+### Day-to-day commands
+
+Everyday control does not need the Builder. `INSTALLATION.txt` lists copy-ready commands with the project name, settings folder and `.env` file spelled out. Their general shape:
+
+```bash
+docker compose --project-name '<project>' --project-directory '<settings>' \
+  --env-file '<settings>/.env' --file '<settings>/docker-compose.yml' stop
+```
+
+Replace `stop` with `up -d --no-build --pull never` to start again, `ps --all` for status or `logs -f --tail 100` for logs. `down -v` deletes the data volumes; do not use it unless you intend to wipe the installation.
+
+## GPU and video encoding
+
+When adaptive streaming is on, the transcoding worker can encode video on a GPU through VAAPI. This is purely a speed-up: with no usable GPU, video is encoded on the CPU and setup still succeeds. The worker image ships AMD and Intel drivers only, so NVIDIA GPUs are not used.
+
+How it works:
+
+- The system check looks for render nodes (`/dev/dri/renderD*`) with an AMD or Intel vendor ID, and shows the first one it finds. The Builder records the node, its group and its device number.
+- If one is found, the generated Compose file mounts `/dev/dri` read-only, joins the worker to the node's group and allows only that device. `.env` gets `VIDEO_ENCODING_MODE=Auto` plus `VIDEO_GPU_DEVICE`, `VIDEO_GPU_GROUP` and `VIDEO_GPU_DEVICE_NUMBER`. With none, it gets `VIDEO_ENCODING_MODE=Cpu` and no GPU access at all.
+- Detection only says a GPU exists. After the images are built, a deployment stage starts the real worker image against each detected GPU in turn. The first one that can encode is kept. A GPU that fails is dropped, the files are rewritten for the next candidate or for the CPU, and resource limits are recalculated. The summary and the done screen state where video ends up being encoded.
+
+### Check the GPU on its own
+
+You can test GPUs without installing or changing anything, from the welcome screen (press D) or from the command line:
+
+```bash
+dotnet run --project Builder/Builder.csproj -- --diagnose gpu --settings '/home/me/alexandria/settings'
+```
+
+The report lists each render node and whether it can encode, what the installation is wired to, and notes such as "the GPU's device number or group changed since setup" or "a GPU here can encode, but this installation does not use it". It tests the installed worker image. If there is none, it builds a temporary image named `alexandria-gpu-check` from your source (the first build needs network access and can take minutes) and removes it afterwards. Each test starts a container, so expect about a minute.
+
+In the wizard, when more than one GPU encodes you can choose which the next setup run tries first. That choice is not applied until you run setup with the same settings folder. From the command line, the report is plain text you can paste into an issue.
+
+## Common problems
+
+| Symptom | Cause and fix |
+| --- | --- |
+| "This installer supports glibc-based Linux x64 hosts only" | Run it on Linux x64 with glibc. Alpine and other musl systems are refused. |
+| "Docker is not installed or cannot run" | Install Docker Engine and the Compose plugin, start the service and make sure your account can use it without `sudo`. Press R to check again. |
+| "Docker connection cannot use local folders" | `DOCKER_HOST` or the selected Docker context points to a remote daemon. Unset it or switch to the local context (`docker context ls`). |
+| "Missing required source asset" or "installer template" | The source folder is incomplete, or a native build lacks its `Templates/Local` folder. Use the full checkout. |
+| The source folder or folder path is rejected | Use a real directory, not a symlink, and check that you can write to it. |
+| HTTPS port is busy | Pick a free port on the network screen. Another project's port is never taken over. |
+| "The environment file changed after review" | Something edited `.env` while the Builder was running. Return to the summary and review again. |
+| "Existing configuration needs attention" | The folder holds a configuration the Builder cannot read safely. Nothing was replaced. Restore `alexandria-config.json` from backup, or choose another folder. |
+| The build fails | Read the installer log, since no containers exist yet. Look for a registry, network, disk or memory error, fix it and retry with the same folder. A build may take up to an hour before it is stopped. |
+| A selected service never becomes ready | Use the failure menu to show container status and that service's logs. Disabled optional workers are not required. |
+| "Storage initialization completed without a complete key handoff" | Rerun the storage init job as shown in [Operations](/guides/operations/#named-failures-and-next-steps), then run the Builder again on the same folder. |
+| A second device shows a certificate warning | Expected until it trusts the authority. See [first steps](/getting-started/first-steps/). Do not click through the warning. |
+| The server works but other devices cannot connect | Check that both are on the same LAN, that the address is current, that the firewall allows the chosen TCP port and that the router does not isolate Wi-Fi clients. The Builder changes none of these. |
+| Video encodes on the CPU although a GPU exists | Run `--diagnose gpu`. The GPU may have failed the encode test, or the installation was set up before it was wired. Rerun setup on the same folder. |
+
+For general runtime problems after install, see [Troubleshooting](/operations/troubleshooting/). For recovery steps after a failed run, see [Operations, recovery and backups](/guides/operations/).

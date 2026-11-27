@@ -1,0 +1,225 @@
+---
+title: Automating Your Library
+description: Every automation you can set up from the web interface, from folder rules to auto-playlists, with step-by-step instructions.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Alexandria can do a lot of work for you after a file lands in your library: convert media so it streams, tag music by genre and mood, build playlists, fetch lyrics and generate previews. This page lists every automation you can configure from the web interface, where to find it, and what to expect.
+
+Some things are set per folder, some per account, some per installation. The table shows which is which.
+
+| Automation | Where you set it | Who can set it |
+|---|---|---|
+| [Folder rules](#folder-rules) (convert to streamable, auto-tag) | **Files** → folder details → **Automation** | Any user, on their own folders |
+| [Starter folders and rules](#starter-folders-during-the-welcome-tour) | **Welcome tour**, **Your library** and **Automation** steps | The new user, once |
+| [Auto-tagging behavior](#auto-tagging) | **Settings** → **Auto-tagging** | Any user, for their own account |
+| [Auto-tag one file now](#auto-tag-a-single-file) | File details → **Auto-tag** | Any user, on their own files |
+| [Auto-playlists](#auto-playlists) | **Settings** → **Auto-playlists** | Any user, for their own account |
+| [Lyrics](#lyrics) | The player's lyrics panel | Any user, per track |
+| [Activity history cleanup](#activity-history-retention-admin-only) | **Admin** → **Configuration** | Administrators only |
+| [Previews, metadata, streaming, models](#settings-made-at-install-time) | Builder setup | Whoever installs or reinstalls |
+
+<Aside type="note">
+  Admin pages under **Admin** → **Integrations** are monitoring dashboards. They show queue depth, failure rates and incidents for each background service, but they have no settings to change. See [Monitoring Dashboards](/operations/monitoring-dashboards/) for how to read them.
+</Aside>
+
+## Folder Rules
+
+A **folder rule** tells Alexandria what to do with files that are uploaded into a folder. Rules live in an **Automation** section on the folder's details panel. The full concept (triggers, priority, inheritance) is covered in [Access Policies](/guides/access-policies/); this section walks through the clicks.
+
+Folder rules are personal: you can only set them on folders you own, and they apply to your uploads. They do not need administrator rights.
+
+### Turn on automation for a folder
+
+<Steps>
+
+1. Open **Files** and find the folder. Right-click it (or open its menu) and choose **View details**. The keyboard shortcut is Alt+Enter.
+
+2. In the details panel, scroll to the **Automation** section. If the folder has nothing set up you will see "No automation configured". Choose **Set up automation**.
+
+3. The section now shows "No rules yet". Choose **Add your first rule**. After the first rule, use **Add rule** in the section header.
+
+4. Fill in the rule (see below) and choose **Add rule** at the bottom of the dialog.
+
+</Steps>
+
+### What the rule dialog asks
+
+The dialog is titled **New automation rule** and works in steps. Later steps appear once you pick an action.
+
+| Step | What you choose |
+|---|---|
+| **What should happen?** | One action: **Transcode** (create streaming qualities for video and audio), **Auto-tag** (detect genre, mood and more from audio), or **Backup** (see the warning below). |
+| **Which files?** | **All eligible files** or **Specific types**. For specific types you pick any of Images, Videos, Audio, Documents, Spreadsheets, Presentations, Archives, Code and Text. Transcode only offers Videos and Audio. |
+| **Quality ladder** (Transcode only) | Which qualities to produce. Video: 360p, 480p, 720p, 1080p, 1440p, 2160p. Audio: 96, 128, 192, 256, 320 kbps. Each quality you select becomes its own stream. The defaults are 720p and 1080p for video, 192 and 320 kbps for audio. You must keep at least one quality. |
+| **When it runs** | **Also run on new versions**: process the file again whenever a new version is uploaded (off by default). **Run order**: **First**, **Early**, **Normal** (default) or **Late**. When several rules match one file, earlier ones run first. |
+
+"All eligible files" means every video and audio file for Transcode, and every audio file for Auto-tag. The action cannot be changed after the rule is created. To switch, delete the rule and add a new one. Hover over a rule (it is always visible on a phone) to reveal the pencil button (**Edit rule**) and the trash button (**Delete rule**).
+
+<Aside title="Backup rules are coming">
+  The dialog shows a **Backup** action marked **Coming soon**. It can't be picked yet because the server has no backup job. Backup rules saved by older versions are kept but skipped. For protecting your data today, see [Backup & Restore](/operations/backup-and-restore/).
+</Aside>
+
+### Include subfolders
+
+Under the rule list there is an **Include subfolders** switch ("Rules also run for files in nested folders"). With it on, the rules also apply to files uploaded anywhere below this folder.
+
+A subfolder that has its own automation uses only its own rules. Rules from a parent folder are not merged in. If a subfolder has no automation of its own, the nearest parent folder with **Include subfolders** switched on applies.
+
+### Remove automation
+
+The trash button in the **Automation** header (tooltip "Remove automation") deletes the folder's rules and its policy. Files that were already processed keep their results.
+
+### What triggers a rule, and what does not
+
+- Rules run when a file finishes uploading into the folder. They also run for new versions if **Also run on new versions** is on.
+- Files in the library root (not in any folder) never trigger rules.
+- Files you encrypt on your device before upload are skipped, because the server cannot read them. See [Encryption](/guides/encryption/).
+- A Transcode rule does not convert files that were already in the folder. An Auto-tag rule does: when you add or edit one, or change **Include subfolders**, existing audio in the folder is queued for tagging in the background (only while auto-tagging is available on your installation).
+
+### Examples
+
+**Music that is ready to stream and tagged.** On your `Music` folder: turn on automation, add a Transcode rule with **Specific types** set to Audio and qualities 192 and 320 kbps, add an Auto-tag rule for **All eligible files**, and switch on **Include subfolders** so albums in subfolders are covered. Set Transcode to **First** so new tracks become playable as early as possible.
+
+**Screen recordings you can watch anywhere.** On `Recordings`: one Transcode rule, **Specific types** set to Videos, qualities 480p and 1080p, and **Also run on new versions** on, so re-exported clips are converted again.
+
+<Aside type="tip">
+  If a rule seems to do nothing, check the [troubleshooting list](#when-automation-does-nothing) at the end of this page.
+</Aside>
+
+## Starter Folders During the Welcome Tour
+
+New accounts go through a short welcome tour. Its **Your library** step creates starter folders (Music, Movies, Pictures, Videos, Documents and Notes). You can rename them, except Notes, which keeps its name because your notes live there.
+
+When the installation supports streaming or auto-tagging, a following **Automation** step lets you turn on rules for the folders where they make sense:
+
+- A switch per folder (for example "Automate Music") turns that folder's rules on or off.
+- Music and Movies show a **Streaming quality** row of buttons. Pick the qualities to produce. If you turn all of them off and nothing else is enabled for that folder, the tour asks you to pick at least one quality or turn the folder off.
+- Music also shows a **Tag genre and mood automatically** checkbox.
+
+Folders created with automation get the same kind of rules described above (Transcode first, Auto-tag after it, both re-running on new versions) with subfolders included. You can change everything later from the folder details panel. If neither streaming nor auto-tagging is enabled on the installation, the **Automation** step does not appear.
+
+## Auto-Tagging
+
+Auto-tagging analyzes audio and attaches genre and mood tags. It needs two things on the installation: automatic tagging turned on and an audio analysis model installed (see [Settings Made at Install Time](#settings-made-at-install-time)). If either is missing, the **Auto-tagging** settings section, the **Auto-tag** buttons and the Auto-tag choice in the rule dialog are hidden, and existing Auto-tag rules show a warning that they do nothing.
+
+Tagging starts in two ways: through an Auto-tag folder rule (above), or by hand for one file (below). Only audio files are supported.
+
+### Auto-tag a single file
+
+Open a music file's details panel (or a track in the music library), find the **Tags** section and choose **Auto-tag**. A toast confirms the job is queued ("Tags appear here once the background analysis finishes"). If the file already has a successful analysis, you are told it is already auto-tagged and nothing is queued again.
+
+### Control what re-runs may change
+
+Open **Settings** and expand **Auto-tagging** ("What happens when tagging runs again"). Changes save automatically.
+
+| Switch | Off (default) | On |
+|---|---|---|
+| **Allow confidence regression** | Re-running never lowers the confidence of a tag already on a file; the higher verdict is kept. | The latest verdict is always stored. |
+| **Allow automatic metadata overwrite** | Automatic processing never replaces a title, artist, album, year or genre already on a file, so your corrections survive. | The latest automatic output always wins. |
+
+Tags you added or removed by hand are never affected by either switch. For how tags are derived and what removal does, see [Tags & Auto-Tagging](/guides/tags-and-auto-tagging/).
+
+## Streaming Conversions
+
+Converting media into streamable qualities (transcoding) is what Transcode rules trigger. You can also watch and manage the work:
+
+- Open **Conversions** in the **Media** section of the sidebar. The page is titled **Transpilation Jobs**.
+- Each file shows its jobs with status (Queued, Partial, Processing, Ready, Failed, Cancelled) and the qualities being produced. Filter by status, by Video or Audio, and with **Filters** (created and completed dates, minimum retries). The page updates live while jobs run.
+- **Cancel** stops a queued or running job. **Requeue** (shown on Failed, Cancelled or Ready jobs) opens a small panel where you can choose qualities again, then queue the job anew.
+
+### Convert a file by hand
+
+For a file that was uploaded before a rule existed, or that no rule covers, open its details panel and find the **Versions** section. Each version has a button with the tooltip "Queue transpilation job for version N". Choose it, pick the qualities (audio bitrates for audio, resolutions for video), then choose **Queue**. A toast links to the **Conversions** page.
+
+The Media section only appears when streaming is enabled on the installation. See [Streaming & Playlists](/guides/streaming-and-playlists/).
+
+## Auto-Playlists
+
+Alexandria builds playlists for you from the tracks in your library. You do not set them up per folder. They appear on their own as the library grows.
+
+Open **Playlists** in the **Media** section. Use the **Collection** buttons (**All**, **Auto**, **Manual**, **Favorites**) and the **Kind** filters (Artist, Album, Theme, Genre, Decade) to separate them from playlists you made yourself.
+
+What gets created:
+
+- **Artist** and **Album** playlists from your tracks' metadata. Several artists in one field ("A, B" or "A feat. B") each get their own playlist.
+- **Genre** playlists from genre-family tags added by auto-tagging, or from the genre in a file's own metadata when it has no tags.
+- **Theme** playlists from mood and other tags (including your own).
+- **Decade** playlists from the release year.
+
+Only tracks that are already streamable count, so the files must have been converted first (see [Folder rules](#folder-rules)). Playlists update by themselves when you change tags or metadata, finish a conversion, or run auto-tagging, and a background sweep catches anything missed (every 15 minutes by default).
+
+### Set the minimum size
+
+Open **Settings** and expand **Auto-playlists** ("When tag and genre playlists get created"). The field **Minimum tracks per tag or genre playlist** (1 to 100, default 10) keeps small groupings from becoming one-track playlists. The sample chips below it show which example groupings would be created at the current value. The setting only controls creation: playlists that already exist keep syncing even if they shrink below the minimum.
+
+Artist, album and decade playlists are not held back by the minimum.
+
+## Lyrics
+
+When lyrics are enabled on your installation, Alexandria looks lyrics up for you:
+
+1. Play a track and choose the **Lyrics** button in the player.
+2. The first time a track's lyrics are requested, the panel shows "Looking for lyrics" while a background worker queries the public LRCLIB database. Synced lyrics scroll with the song, and a **Low**, **Medium** or **High confidence** badge shows how well the match fit.
+3. If it fails, the panel offers **Try again** and **Add manually**. If nothing matched, it offers **Search again** and **Add manually**.
+
+Once lyrics exist, the **Lyrics options** menu (the three dots) offers:
+
+| Item | What it does |
+|---|---|
+| **Add lyrics manually** / **Override with manual lyrics** | Paste lyrics as **Plain text** or **Synced**, then choose **Save lyrics**. Manual lyrics are never overwritten by automatic fetching. |
+| **Refetch lyrics** | Ask the provider again. Not available for manual lyrics. |
+| **Switch to ...** | Change lyrics provider for this track. LRCLIB is the provider that works today. |
+| **Delete lyrics** | Remove them. Delete manual lyrics first if you want an automatic fetch again. |
+
+Lyrics are available for audio only. Videos show "No lyrics for videos". Lookups need the server to reach `lrclib.net`. More detail is in the [Lyrics reference](/reference/lyrics/).
+
+## Previews and Metadata
+
+Previews (thumbnails, rendered pages, playable clips) and descriptive metadata (title, artist, album, year, genre, dimensions) are generated automatically for every upload. There are no per-folder or per-user switches for them. Whether media previews and document previews run at all is decided at install time. See [Uploads & Previews](/guides/uploads-and-previews/).
+
+A Transcode rule also generates the media preview for the file it converts.
+
+## Activity History Retention (Admin Only)
+
+Administrators can choose how long the activity log is kept:
+
+<Steps>
+
+1. Open **Admin** → **Configuration** in the sidebar (the page is titled **System configuration**).
+
+2. In the **Activity history** panel, set **Keep activity for** to a number of days between 30 and 3650. The default is 730 (two years).
+
+3. The change saves automatically. Records older than this are removed by a cleanup that runs once a day. The panel shows when the last cleanup ran and how many rows it removed.
+
+</Steps>
+
+Related automatic cleanups that you cannot configure: deleted files stay restorable in **Trash** for 30 days before their content is purged.
+
+## Settings Made at Install Time
+
+These capabilities are chosen when Alexandria is installed with the Builder, and they decide which of the options above exist in the interface. Re-run the Builder and select the same settings folder to change them. See [Installation](/getting-started/installation/).
+
+| Builder option | What it controls here |
+|---|---|
+| **Media previews** and **Document previews** | Thumbnails and preview generation for uploads |
+| **Adaptive streaming** | The Media section, Transcode rules and the **Conversions** page |
+| **Automatic tagging** | Auto-tag rules, the **Auto-tag** button and the **Auto-tagging** settings section (also needs an audio model below) |
+| **Lyrics fetching** | The lyrics panel and the admin Lyrics dashboard |
+| Audio model: **Off**, **Effnet** or **MAEST** | Which analysis model tags your music. **Off** skips model preparation and disables auto-tagging. MAEST needs a much larger model download and more resources than Effnet. The Builder can download the required model files for you. |
+
+## When Automation Does Nothing
+
+Work through this list in order:
+
+1. **Is the folder where you think it is?** Rules only run for files uploaded into a folder with automation (or into a subfolder when the parent has **Include subfolders** on, and the subfolder has no automation of its own).
+2. **Does the file type match?** Check the rule's **Which files?** choice. Auto-tag only handles audio. Transcode only handles audio and video.
+3. **Was the file encrypted before upload?** Those files are skipped.
+4. **Is the capability on?** If the Media section, the **Auto-tag** option or the **Auto-tagging** settings are missing, the installation has that feature off. Auto-tagging also needs an audio model installed.
+5. **Was the file there before the rule?** Only Auto-tag rules reach existing files. For existing media, queue a conversion by hand from the file's **Versions** section (see [Convert a file by hand](#convert-a-file-by-hand)).
+6. **Did a job fail?** Check **Conversions** (Failed filter), or ask an administrator to look at **Admin** → **Integrations** and use **Requeue all** on the failed jobs list.
+
+---
+
+Related: [Access Policies](/guides/access-policies/) · [Tags & Auto-Tagging](/guides/tags-and-auto-tagging/) · [Streaming & Playlists](/guides/streaming-and-playlists/) · [Settings & Appearance](/guides/settings-and-appearance/)

@@ -1,0 +1,75 @@
+---
+title: Search & Documents
+description: Search file names and the text inside documents, narrow results with filters, and see the properties stored in documents.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Alexandria searches in one box. It finds files and folders by name and finds documents by the words inside them, and you narrow the results with filters.
+
+## Opening search
+
+Press **Ctrl+/** (Cmd+/ on a Mac), or Shift+K, or click the search button in the [Files](/guides/files-and-versioning/) toolbar. A search dialog opens, headed "Search files and folders by name and documents by their text, narrowed with filters".
+
+Type a name or words from a document. The dialog shows results in two groups, **Folders** and **Files**, with counts. Move through them with the arrow keys; on a wide screen the highlighted file or folder previews in a pane beside the list. Enter, or a click, opens the folder that contains the result.
+
+## Filters
+
+Type a filter keyword followed by a colon (for example `in:`) and a list of choices opens. Each chosen filter becomes a chip in the box. Backspace on an empty box removes the last chip, and the filter button next to the box lists every keyword.
+
+| Filter | What it does |
+|---|---|
+| `in:` | Items directly inside a folder you pick (the folder you are viewing is offered first) |
+| `type:` | **Files** only, or **Folders** only |
+| `tag:` | Files that have a tag you pick |
+| `uploaded:` | When it was uploaded |
+| `modified:` | When it last changed |
+| `deleted:` | When it was deleted (for items in the trash) |
+| `size:` | File size: pick a preset or type `>10mb`, `<1gb` or `10mb-1gb` (units kb, mb, gb, tb) |
+| `is:` | **Starred** (favorite folders), **Deleted**, or **Note** (markdown notes under your Notes folder) |
+| `has:` | Folders that contain **Files** or **Subfolders** |
+
+The three date filters (`uploaded:`, `modified:`, `deleted:`) offer **Today**, **Last 7 days**, **Last 30 days**, **This year**, **Last year**, or a calendar to pick your own range.
+
+Some filters only make sense for one kind of result: `size:`, `tag:` and `is:note` apply to files, while `has:` and `is:starred` apply to folders. If your chips contradict each other (for example `size:` together with `has:`) the dialog says "Some filters only fit files and others only folders. Clear them to start over."
+
+## Searching inside documents
+
+Search also looks at the text inside your documents, so a scan named `scan_0042.pdf` turns up when you search for words on its pages.
+
+- **Which files:** PDF, Word, Excel and PowerPoint (`.docx`, `.xlsx`, `.pptx`), OpenDocument text, spreadsheets and presentations, EPUB books, and plain text or Markdown (so your [notes](/guides/notes/) are searched too). Older binary Office files, RTF and MOBI are not text-searched, nor are code and data files such as CSV or JSON.
+- **How a match shows:** a file found by its text gets a second line under its name with the passage that matched. On a wide screen, hovering it opens the passages in the preview pane, with your words highlighted.
+- **Every word counts:** a document matches when its text holds all the words you typed, each as the start of a word (`invoi pari` finds "invoices from Paris"). Words shorter than three letters only match file names.
+- **Order:** files whose name contains your words come first, then documents that contain them, then names that are only close to what you typed.
+- **Typos:** names tolerate small typos (`robinsn` finds a Robinson Crusoe book); document text needs the words as they are written.
+
+New uploads become searchable by their text within about a minute, once the document worker has read them. Only the current version of a file is searched.
+
+<Aside type="note">
+  Some documents can't be searched by their text: scans with no text layer (finding words in them would need OCR), password-protected and copy-protected files, and [encrypted](/guides/encryption/) uploads, whose contents the server never reads. Very long documents are searched from the start, up to five million characters. Admins can see how many documents fall into each group on the **Previews** admin page.
+</Aside>
+
+## Other searches
+
+Several pages have their own search box that looks only at that page: **Notes** (names and text), **Trash** (deleted items by name), **Music**, **Playlists** (optionally inside tracks) and **Settings**. Their results are separate from the file search described here.
+
+## Document properties
+
+Open a document's details drawer and, once Alexandria has read the file, a **Document details** section appears (**Book details** for ebooks). It reads properties that the document itself carries:
+
+- **Title** and subject, **author** (with who last edited it) and company.
+- When it was **Written** and **Last saved**. For a book these read **Published** and **Last updated**.
+- The application that made it, and for a PDF the program that produced it.
+- Counts: **Pages**, **Slides**, **Sheets** and **Words**, where the format provides them.
+- **Editing time**, **Paper size**, **Publisher**, **ISBN**, **Language**, and **Keywords** (**Subjects** for a book). A series and its position are shown for books that record one.
+- A **Password protected** or **Copy protected** notice where it applies. Locked documents keep their details hidden until the file is opened with its password.
+
+These come from Word, Excel and PowerPoint files, OpenDocument files, PDFs, and EPUB and Mobipocket books. Details appear once the preview is generated; for books, within a few minutes of uploading. If a document records nothing, the section says so ("This document doesn't record who wrote it or when."). [Encrypted](/guides/encryption/) files are never read.
+
+<Aside type="caution">
+  Author and company names are stored in the file itself, so they travel with it. When you create a [share link](/guides/sharing-links/) for such a document the dialog warns "This document names who wrote it". Photos have a similar set of properties; see [Gallery & Photos](/guides/gallery-and-photos/#image-details-and-metadata).
+</Aside>
+
+---
+
+Related: [Files & Versioning](/guides/files-and-versioning/) · [Notes](/guides/notes/) · [Tags & Auto-Tagging](/guides/tags-and-auto-tagging/)

@@ -1,0 +1,102 @@
+---
+title: Project Structure
+description: A tour of the repository — backend projects, frontend folders, and infrastructure directories.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+The repository is a monorepo: a .NET backend, a Vue frontend, an installer, Python classificators, and all infrastructure configuration at the root.
+
+## Root Layout
+
+| Path | What it is |
+|---|---|
+| `Backend/` | .NET 10 solution (`AlexandriaBackend.slnx`, 20 projects) |
+| `Frontend/` | Vue 3 SPA (Vite + TypeScript + Pinia) |
+| `Builder/` | AOT-compiled interactive TUI installer (.NET) |
+| `classificators/essentia/` | Python audio classification workers (Essentia/TensorFlow) |
+| `scripts/` | Container init scripts (`garage-init/`, `postgres/`) |
+| `nginx/` | Nginx config for local/prod/dev + TLS certs (gitignored) |
+| `rabbitmq/` | Broker config; `definitions.template.json` is the queue topology source of truth |
+| `grafana/`, `prometheus/`, `loki/`, `alloy/` | Observability provisioning |
+| `docker-compose*.yml` | `local` (full stack), plain (production), `.dev` (infrastructure only) |
+| `.env.template`, `garage.template.toml` | Config templates — copy, fill in, never commit |
+| `plans/` | Living implementation plans per feature |
+| `Docs/` | This documentation site (Astro Starlight) |
+
+## Backend Projects
+
+20 C# projects in five layers (verified against the solution file). Dependencies point inward: API/Workers → Infrastructure → Services → Repositories → Data → Common.
+
+**Hosts** (run as processes/containers):
+
+| Project | Role |
+|---|---|
+| `Alexandria.Api` | Public HTTP API — FastEndpoints, JWT auth, health checks |
+| `Alexandria.Workers.Document` | Document/archive/text preview generation |
+| `Alexandria.Workers.Media` | Thumbnails, media metadata, preview clips |
+| `Alexandria.Workers.MediaTranspilation` | DASH/HLS transcoding |
+| `Alexandria.Workers.MediaMetadata` | Enrichment orchestrator (batches, results, auto-tag sync) |
+| `Alexandria.Workers.Lyrics` | Lyrics fetching |
+
+**Business logic:**
+
+| Project | Role |
+|---|---|
+| `Alexandria.Services.Storage` | Core file orchestration: uploads, promotion, dedup, signed URLs, tags, policies, cleanup, auto-tagging |
+| `Alexandria.Services.Streaming` | Transpilation jobs, playlists, lyrics domain |
+| `Alexandria.Services.Preview` | Preview generators (images, documents, archives, text, media) |
+| `Alexandria.Services.User` | User management + appearance/behavior settings |
+| `Alexandria.Services.Monitoring` | Resource monitoring, operational events |
+
+**Data access & contracts:**
+
+| Project | Role |
+|---|---|
+| `Alexandria.Data.Models` | Entity classes only |
+| `Alexandria.Data` | `AlexandriaDbContext`, EF configurations, migrations, interceptors, seeders |
+| `Alexandria.Repositories` | One repository per aggregate |
+| `Alexandria.Dto` | DTOs shared across boundaries |
+| `Alexandria.Infrastructure` | DI wiring, dual S3 clients, RabbitMQ publisher/channel pool, health checks, in-API background workers (promotion, cleanup) |
+| `Alexandria.Common` | Shared kernel: interfaces, enums, exceptions, settings — zero dependencies |
+
+**Tests:** `Alexandria.Tests.Unit` (xUnit v3), `Alexandria.Tests.Integration` (Testcontainers), `Alexandria.Tests.Common` (builders/fakes/fixtures).
+
+<Aside type="tip">
+  Central package versions live in `Directory.Packages.props`; shared build settings in `Directory.Build.props`.
+</Aside>
+
+## Backend API Feature Folders
+
+Endpoints are FastEndpoints classes grouped under `Backend/Alexandria.Api/Features/`:
+
+`Auth/`, `Storage/{Files,Directories,Metrics,SignedUrls}/`, `Streaming/` (+`Playlists/`, `Lyrics/`), `Tags/`, `Policies/`, `Users/`, `Settings/`, `Admin/{Settings,Enrichment}/`, `Activity/`, `Monitoring/`.
+
+Each folder typically contains one class per endpoint plus validators — see [REST API reference](/development/api-reference/).
+
+## Frontend
+
+```
+Frontend/src/
+├── api/            # Fetch client and modules per resource
+├── components/     # Reusable UI (dashboard/, streaming/, policy/, modals/)
+├── composables/    # Shared Composition API logic
+├── queries/        # @pinia/colada query hooks
+├── mutations/      # @pinia/colada mutation hooks
+├── stores/         # Pinia stores
+├── schemas/        # Zod schemas
+├── router/         # Vue Router + guards
+├── views/          # Route-level pages (dashboard/, onboarding/)
+├── workers/        # Web Workers (client-side crypto)
+└── sw.ts           # Serwist service worker (PWA)
+```
+
+Conventions and scripts are documented in `Frontend/README.md`.
+
+## Classificators
+
+`classificators/essentia/` contains the Python side of audio analysis: `worker.py` (RabbitMQ consumer, one container per backbone), `classify.py` (CLI runs), `essentia_core.py` (shared inference logic), and checksummed models. See its README or [Audio Analysis](/development/audio-analysis/).
+
+---
+
+<Aside type="note">**Verified against:** `Backend/AlexandriaBackend.slnx` (project list), directory listings for `Backend/`, `Frontend/src/`, root; `Backend/Alexandria.Api/Features/` tree.</Aside>

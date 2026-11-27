@@ -1,0 +1,258 @@
+---
+title: Backup & Restore
+description: What to back up, how to take a consistent copy of an Alexandria instance, and how to restore it.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+<Aside type="caution">
+  Alexandria has **no built-in backup**. Builder does not create, schedule or restore backups, and the repository ships no backup script. Everything below is a manual procedure on top of Docker. Rehearse a restore on a spare machine before you depend on it.
+</Aside>
+
+For getting your own files out through the web UI, see [Exporting Your Data](/guides/exporting-your-data/). This page is for the person running the server.
+
+## What holds your data
+
+| Data | Where | Back up? |
+|---|---|---|
+| Users, file index, versions, tags, playlists, audit history, note metadata | PostgreSQL, volume `postgres_local_data` | Always |
+| File contents, previews, streams, images | Garage, volumes `garage_local_meta_data` and `garage_local_storage_data` | Always, both volumes |
+| Queued background jobs | RabbitMQ, volume `rabbitmq_local_data` | Yes, to keep pending work |
+| Credentials, certificates and configuration | The settings folder (see below) | Always |
+| Grafana, Prometheus, Loki and Alloy state | `grafana_local_data`, `prometheus_local_data`, `loki_local_data`, `alloy_local_data` (only when monitoring is enabled) | Optional |
+| Worker scratch space and audio working data | `document_worker_scratch`, `media_worker_scratch`, `transpilation_worker_scratch`, `media_metadata_worker_scratch`, `media_audio_data` | Only to keep in-flight work |
+
+Notes on the table:
+
+- The Garage metadata volume holds the storage layout and the access keys. The file data volume is useless without it, so always take the pair together.
+- `rabbitmq_definitions` is rebuilt from the settings folder at every start and does not need a backup.
+- The API and the frontend keep no state of their own.
+- Garage holds five buckets: `alexandria-files` (the originals), `alexandria-previews`, `alexandria-temp`, `alexandria-images` and `alexandria-streaming`. Previews and streams are derived from the originals, but regenerating them means reprocessing everything, so back up the whole volume.
+- A database dump on its own cannot rebuild uploaded files, and a storage backup on its own has no file names, owners or versions. You need both.
+
+### The settings folder
+
+For an installer-generated project this is the folder you chose in Builder. It holds, among other things:
+
+- `.env` with the database, RabbitMQ, Garage, JWT and CSRF secrets
+- `alexandria-config.json` and the generation checkpoint
+- `docker-compose.yml`, `garage.toml` and the `rabbitmq/` configuration
+- `nginx/certs/`, including the private keys and the local CA
+- `init-output/`, the model cache under `models/`, and `INSTALLATION.txt`
+
+Treat the archive of this folder as credential material. The Garage access keys in `.env` must match the keys stored in the Garage metadata volume, and a different `JWT_SECRET` signs everyone out. Always restore the settings folder and the volumes from the same backup set.
+
+Losing the local CA or the server key also means every device must trust a new certificate. Keep them in the backup.
+
+<Aside type="note">
+  Client-side encryption keys are never on the server. They come from each user's password, so no server backup can recover a lost encryption password. See [Encryption](/guides/encryption/).
+</Aside>
+
+## Before you start
+
+For an installer-generated project, use the project name and settings path recorded in `INSTALLATION.txt` and `alexandria-config.json`, together with the `alexandria_compose` helper defined in [Operations](/guides/operations/#address-the-correct-installation). Set these variables once per shell:
+
+```bash
+alexandria_target='/srv/Alexandria settings'
+alexandria_project='replace-with-saved-project-name'
+alexandria_backup="$HOME/alexandria-backup-$(date +%Y%m%d-%H%M%S)"
+
+umask 077
+mkdir -p "$alexandria_backup"
+```
+
+Volume names carry the Compose project prefix, so `postgres_local_data` is really `<project>_postgres_local_data`. Installations adopted from older layouts can use other names, so list the real ones:
+
+```bash
+docker volume ls \
+  --filter "label=com.docker.compose.project=$alexandria_project" \
+  --format '{{.Name}}'
+```
+
+The `Volumes:` line in `INSTALLATION.txt` shows the same names.
+
+<Aside type="tip">
+  If you run the reference stack from `docker-compose.local.yml` instead, use `-f docker-compose.local.yml -p <project>` in place of the helper, and take `.env`, `garage.local.toml`, `init-output/`, `rabbitmq/` and `nginx/certs/` from the source folder as your settings. The container names are fixed: `alexandria-local-postgres`, `alexandria-local-garage` and `alexandria-local-rabbitmq`.
+</Aside>
+
+## Back up
+
+A consistent copy needs the stack stopped, so that the database, Garage and RabbitMQ describe the same moment.
+
+<Steps>
+
+1. Let active uploads and jobs finish, then stop the project:
+
+   ```bash
+   alexandria_compose stop
+   ```
+
+2. Confirm nothing belonging to the project is still running. Do not copy while this prints a container:
+
+   ```bash
+   docker ps \
+     --filter "label=com.docker.compose.project=$alexandria_project" \
+     --format '{{.Names}} {{.Status}}'
+   ```
+
+3. Archive the settings folder. This includes hidden files such as `.env`:
+
+   ```bash
+   tar czf "$alexandria_backup/settings.tar.gz" \
+     -C "$(dirname "$alexandria_target")" "$(basename "$alexandria_target")"
+   ```
+
+4. Archive each volume from the list above. The helper mounts the volume read-only into a throwaway container and writes one archive per volume. The `alpine:3.20` image is the one the installer's `rabbitmq-config` job uses, so Docker pulls it on first use if the host does not have it.
+
+   ```bash
+   alexandria_volume_backup() {
+     docker run --rm \
+       --volume "$1":/data:ro \
+       --volume "$alexandria_backup":/backup \
+       alpine:3.20 tar czf "/backup/$1.tar.gz" -C /data .
+   }
+
+   alexandria_volume_backup "${alexandria_project}_postgres_local_data"
+   alexandria_volume_backup "${alexandria_project}_garage_local_meta_data"
+   alexandria_volume_backup "${alexandria_project}_garage_local_storage_data"
+   alexandria_volume_backup "${alexandria_project}_rabbitmq_local_data"
+   ```
+
+   Run it again for any optional volume you want to keep, using the exact names from `docker volume ls`.
+
+5. Check the archives, and record their checksums:
+
+   ```bash
+   tar tzf "$alexandria_backup/settings.tar.gz" > /dev/null
+   sha256sum "$alexandria_backup"/*.tar.gz > "$alexandria_backup/SHA256SUMS"
+   ```
+
+6. Start the project again:
+
+   ```bash
+   alexandria_compose up -d --no-build --pull never
+   ```
+
+</Steps>
+
+Also record the source revision and installer version (both in `INSTALLATION.txt`). Keep the backup somewhere other than the machine it came from, and keep it private.
+
+### A database dump (optional, but handy before upgrades)
+
+A plain SQL dump is smaller and portable, and it is the better safety net before a version upgrade, since the API can apply database migrations on startup. It does not replace the volume archives. The command reads the database name and user from the container's own environment, so you do not need the values from `.env`:
+
+```bash
+docker exec alexandria-local-postgres \
+  sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' \
+  | gzip > "$alexandria_backup/alexandria-db.sql.gz"
+```
+
+The dump is consistent on its own, but it only matches the file storage if nothing was uploaded meanwhile. For a matching pair, stop the project, start only the database with `alexandria_compose start postgres`, dump, then stop it again before taking the volume archives.
+
+## Restore
+
+<Aside type="caution">
+  Restore with the application stopped, preferably onto a spare host first. Do not start an empty stack to "initialize" it before restoring: the API can apply migrations and the setup jobs change service state on first start.
+</Aside>
+
+### Restoring over the same installation
+
+This rolls the instance back to a backup, for example after a failed upgrade.
+
+<Steps>
+
+1. Stop the project and confirm no project container is running (steps 1 and 2 above).
+
+2. Restore the settings folder if it was damaged. Move the damaged one aside rather than deleting it:
+
+   ```bash
+   tar xzf "$alexandria_backup/settings.tar.gz" -C "$(dirname "$alexandria_target")"
+   ```
+
+3. Empty each volume and unpack its archive, using the same names as in the backup:
+
+   ```bash
+   alexandria_volume_restore() {
+     docker run --rm \
+       --volume "$1":/data \
+       --volume "$alexandria_backup":/backup:ro \
+       alpine:3.20 sh -c 'find /data -mindepth 1 -delete && tar xzf "/backup/$0.tar.gz" -C /data' "$1"
+   }
+
+   alexandria_volume_restore "${alexandria_project}_postgres_local_data"
+   alexandria_volume_restore "${alexandria_project}_garage_local_meta_data"
+   alexandria_volume_restore "${alexandria_project}_garage_local_storage_data"
+   alexandria_volume_restore "${alexandria_project}_rabbitmq_local_data"
+   ```
+
+4. Validate the settings and start with the saved images:
+
+   ```bash
+   alexandria_compose config --quiet
+   alexandria_compose up -d --no-build --pull never
+   alexandria_compose ps --all
+   ```
+
+5. Verify: sign in, check that the file list looks right, and download one file and open one preview. If you use encryption, decrypt one file.
+
+</Steps>
+
+### Restoring onto a new host
+
+Use the same source revision and installer version recorded in the backup, so the images match the stored data.
+
+<Steps>
+
+1. Put the matching source checkout in place at the path saved in `alexandria-config.json`, and extract the settings folder at its original path. The Compose file and its bind mounts use these absolute paths. If they must change, follow the relocation procedure in the `scripts/installer/README.md` file of the source checkout.
+
+2. Build or load the images, then let Compose create the stack's volumes without starting it:
+
+   ```bash
+   alexandria_compose build
+   alexandria_compose create --no-build --pull never
+   ```
+
+   Let Compose create the volumes. Builder's repair relies on the Compose labels, so do not create them by hand with `docker volume create`.
+
+3. Unpack the volume archives with the restore helper from the previous procedure, then start the project.
+
+4. Run the verification from step 5 above. If clients saw a certificate warning, check that `nginx/certs/` was restored, not regenerated.
+
+</Steps>
+
+### Restoring only the database from a dump
+
+Use this when you have the Garage volumes intact and only the database is lost or damaged.
+
+<Steps>
+
+1. Start only the database, leaving the API stopped:
+
+   ```bash
+   alexandria_compose up -d postgres
+   ```
+
+2. Load the dump:
+
+   ```bash
+   gunzip -c "$alexandria_backup/alexandria-db.sql.gz" \
+     | docker exec -i alexandria-local-postgres \
+       sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1'
+   ```
+
+3. Start the rest of the project and verify as above.
+
+</Steps>
+
+Files uploaded after the dump was taken exist in Garage but have no database record, so they will not appear in the app.
+
+## Keeping backups healthy
+
+- Take a backup before any change of source or image versions. Builder has no upgrade rollback and does not downgrade the database schema, so restoring a backup is the way back.
+- Repair does not restore missing data and does not reset an established administrator password.
+- Schedule backups yourself, for example with cron on the host, and plan for the downtime that a stopped-stack copy needs.
+- Keep at least one copy off the machine, and check that an archive extracts.
+
+---
+
+Related: [Operations](/guides/operations/) · [Configuration Reference](/operations/configuration-reference/) · [Troubleshooting](/operations/troubleshooting/) · [Exporting Your Data](/guides/exporting-your-data/)

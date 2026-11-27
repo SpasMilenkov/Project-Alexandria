@@ -1,0 +1,96 @@
+---
+title: Notes
+description: Write markdown notes in Alexandria, with autosaved drafts, versions, links, backlinks and embedded files.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Notes are **markdown files** that you write inside Alexandria. They live in a system folder called **Notes**, so they are ordinary files: they have versions, show up in [search](/guides/search-and-documents/), can be tagged and shared, and are backed up with everything else. The editor adds links between your notes and the rest of your library.
+
+{/* TODO screenshot: note editor with outline and connections panels */}
+
+## The Notes page
+
+**Notes** in the sidebar (`/notes`) lists your notes, most recently edited first, grouped under headings such as today, yesterday, the past week, the past month and then one heading per month.
+
+- Each card shows the note's title, a short excerpt, how long ago it was edited and, if other notes link to it, a "Mentioned in N notes" count.
+- The list includes notes in the folders inside Notes. Other files you keep in Notes (pictures, PDFs) are treated as attachments and are not listed.
+- **Search notes** looks at note names and their text.
+- Subfolders appear above the list so you can move into them. A trail at the top takes you back up.
+- Only 30 notes load at a time; use **Load more** for the rest.
+- **New note** creates an empty note in the folder you are viewing and opens it. The first note you ever create also creates the Notes folder.
+
+You can also start a note from the **New Note** button in the [Files](/guides/files-and-versioning/) explorer toolbar, from **New note** in a file's **Mentioned in** section (a note about that file), or from the link picker described below. A new note is called "Untitled" until its first save, when it is renamed after its first heading or first line.
+
+## The editor
+
+Open a note from the Notes page or from **Open in editor** in a markdown file's details drawer (`/notes/...`). The header has:
+
+- A back arrow to the note's folder, and the note's name. Click the name to rename it: Enter keeps the new name and Esc drops it. The file extension is hidden and cannot be changed here.
+- A save indicator (see below), **Save**, an **Editor mode** switch between **Rich text** and **Markdown**, **Copy markdown**, and **Zen mode**.
+- Buttons to show the **outline** and **connections** panels.
+
+In **Rich text** mode a toolbar offers text style (**Paragraph**, **Heading 1** to **Heading 3**), **Bold**, **Italic**, **Strikethrough**, **Inline code**, an **Insert** menu, and **Undo** and **Redo**. **Insert** holds **Link…**, **Embed…**, a link to what is currently playing, **Bullet list**, **Numbered list**, **Quote**, **Code block** and **Divider**. Only formatting that has a markdown form is offered. **Markdown** mode edits the raw text.
+
+<Aside type="note">
+  Rich text editing can rewrite markdown that was written another way into the editor's own style. The first time that would happen you get a "Formatting may change" notice, and after saving, "Saved with tidied formatting". Use **Markdown** mode if you need your text kept exactly as written.
+</Aside>
+
+Two side panels sit beside the page on wide screens, and both can be hidden (your choice is remembered for this browser):
+
+- **Outline** lists the note's headings and follows where you are reading. Click a heading to jump to it (in Rich text mode).
+- **Connections** shows **Mentioned in** (the notes that link here), the note's **Tags** with a tag picker, and a **Note** summary with its folder, word count and reading time, version number and when it was last edited, and size.
+
+**Zen mode** (Ctrl+Shift+F, or the button) hides the app's navigation and background picture so only the note remains. Esc leaves it. The panels stay as you left them.
+
+The editor opens notes up to **1 MB**. It will not open encrypted notes, files that are not markdown, or a note that is in the trash, and tells you which applies.
+
+## Saving drafts and versions
+
+You never need to press Save, but there are two layers to know about.
+
+- **Drafts** are the working text. While you type, the editor stores a draft after about 10 seconds of quiet (at least every 30 seconds of steady typing). A draft is one cheap record that is replaced each time. It is not a version, but it is kept: close the tab and come back, and the note opens with your draft.
+- **Versions** are checkpoints in the file's [version history](/guides/files-and-versioning/#versioning). A new version is made when you press **Save** (Ctrl+S), automatically after about 10 minutes of editing since the last one, and when a draft has been left alone for an hour, so a forgotten draft is not lost. Older versions can be downloaded or set as active from the file's **Versions** list.
+
+The save indicator reads **Unsaved changes**, **Saving…**, "Saved at" a time, or shows a warning with **Retry** when saving fails. If you try to leave with changes that are not stored, you are asked "Leave without saving?".
+
+If the note changed somewhere else, for example in another tab or on another device, saving stops and you choose:
+
+- **Keep my version**: your text becomes the next version.
+- **Load the latest**: your edit is dropped and the note reopens as it is stored now.
+
+If you reopen a note whose saved draft was made from an older version, the editor asks "Unsaved changes from an older version": **Keep these changes** as the next version, or **Discard them** and open the latest.
+
+## Links and backlinks
+
+Type `[[` in the editor (or use **Insert → Link…**) to open the link picker, then start typing a name. You can link to a **file**, a **folder**, a **tag** or a **playlist**. Enter or Tab inserts the choice as a chip. If nothing matches you can create a new note from the picker and link to it.
+
+Links are stored by the item's ID, not by its name, so renaming or moving the target never breaks them. A chip shows the target's current name unless you gave it a label. Pasting a link to something in your library, or the address of its page in this app, also turns into a chip.
+
+Click a chip to select it and open its small editor, where you can change its **text**, **Open** the target, **Show as embed** or **Remove** it. In markdown a link is written as `<alexandria://file/ID>` or `[label](alexandria://file/ID)`.
+
+**Backlinks** work the other way round: a file's details drawer has a **Mentioned in** section listing the notes that link to it, and a note's **Connections** panel lists the notes that link to that note. Backlinks are collected in the background, so a brand-new link can take a moment to show up.
+
+### Page and time links
+
+A link to a file can point into it:
+
+- For audio and video, a start time. In the picker, press Tab after the name and type a time such as `1:30`, or type `?t=1:30` straight after the name. In an existing link, edit **Start at**.
+- For PDFs and paged documents, a page. Press Tab and type a page number, or type `#page=4`. Only the first **5 pages** have a preview, so a page link cannot go past page 5.
+
+The chip then shows the moment ("12:04" or "p. 3"). While something is playing, **Insert → Link at 12:04** adds a link to the playing file at its current time.
+
+## Embeds
+
+Type `![[` (or **Insert → Embed…**) to show a file inside the note instead of linking to it. Embeds are shown by kind:
+
+- **Images** and **PDFs** show their preview.
+- **Audio** and **video** show a card with a play button that hands the file to the main player, so history, the queue and the mini player work as everywhere else. A video starts inside the note. The media must be converted for streaming first, otherwise the card says "Not ready to play yet".
+- Everything else (notes, folders, tags, playlists and encrypted files) appears as a card that opens the item.
+- Items in the trash or no longer available are marked as such.
+
+The embed's small editor has a **Caption** and a **Show as link** button to turn it back into a chip.
+
+---
+
+Related: [Files & Versioning](/guides/files-and-versioning/) · [Search & Documents](/guides/search-and-documents/) · [Streaming & Playlists](/guides/streaming-and-playlists/)

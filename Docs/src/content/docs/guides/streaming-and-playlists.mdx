@@ -1,0 +1,88 @@
+---
+title: Streaming & Playlists
+description: Your self-hosted music and video player, playlists, lyrics, play history and listening recaps.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Alexandria includes a built-in player for audio and video stored in your library. In the sidebar, the **Media** section holds **Overview**, **Music**, **Videos**, **Playlists**, **Listening stats**, **Play history** and **Conversions**.
+
+<Aside type="caution">
+  Streaming is optional. If your sidebar has no **Media** section, or **Overview** says "Media streaming is unavailable", the operator has it disabled (`STREAMING_ENABLED`). You can still browse and manage your files.
+</Aside>
+
+{/* TODO screenshot: music player */}
+
+## Getting media ready to play
+
+Media only appears in **Music** and **Videos** once it has been **converted** into streamable copies at one or more qualities. A new upload is not instantly playable. Three ways to get there:
+
+- A [folder rule](/guides/automation/) converts new files automatically. The first-run tour can set this up for your **Music** and **Movies** folders (see [First steps](/getting-started/first-steps/#your-starter-folders)).
+- In a file's **Versions** list, the arrows icon queues a conversion for one version and lets you pick the qualities.
+- Until one of those has run, the library shows "Nothing to play yet" with three steps: **Upload**, **Convert**, **Play**.
+
+The **Conversions** page (`/streaming/jobs`, "Transcoding jobs") lists your jobs with their status (**Queued**, **Partial**, **Processing**, **Ready**, **Failed**, **Cancelled**), filters for **Video** or **Audio** and for dates and retry counts, and updates live. An empty library also shows a small explainer of how a folder rule ("transcode rule") prepares media for streaming.
+
+## Overview
+
+**Overview** (`/media`) is your media home: a **Now playing** hero, and shelves for **Jump back in** (songs you played at least twice and haven't heard for a while), **On repeat** (your most played songs of the last 7 days), **This week**, your music and video libraries, playlists and automatic collections, and **Recently played**. A **Music** / **Videos** switch at the top jumps into either library. A new account starts with a welcome page pointing at **Open files** and **View conversions**.
+
+## Music
+
+**Music** (`/streaming/music`) is a grid or list of your ready-to-stream audio.
+
+- Search at the top finds tracks, and its results can all be added to the queue with **Enqueue all**.
+- Click a card to play it. Its menu offers **Play**, **Add to queue** and **Remove from queue**.
+- **Select files** turns on selection, with **Select all loaded** and **Edit metadata** to change several tracks at once.
+- The lyrics button toggles the lyrics panel, and the grid/list buttons switch the layout.
+- A track's **Track details** page (`/streaming/track/...`) shows its artwork and metadata, and has **Edit details** (title, artist, album, year), **Change cover**, tags, and a link to its audio analysis.
+
+### The player
+
+The player follows you across every page, as a **docked strip** along the bottom or a small **mini player** you can drag; it snaps to the nearest corner when you let go. Use the picture-in-picture button to switch between them and the x (**Close player**) to dismiss it. Dismissing the player does not stop your queue: a **Resume music** button appears in the top bar to bring it back. On a phone the player collapses to a pill in the top bar that expands into a full player with tabs.
+
+Controls: previous, play or pause, next, a seek bar, **Shuffle**, **Repeat** (all or one), volume and mute, lyrics, a **Queue** button, and **Player settings**. Position is remembered, so a partly heard track resumes where you left it.
+
+- **Queue**: "Next in queue" holds tracks you added by hand (**Clear queue** empties it), followed by "Next from" the library or playlist you are playing, with a shuffled marker. When playback ends you can press **Play again**.
+- **Player settings** has **Quality** (**Auto**, which adapts to your connection, or a specific bitrate or resolution), **Speed** (0.5x to 2x) and, for audio, **When a playlist ends**: **Stop**, **Continue with library shuffle** or **Return to what I was playing**.
+
+### Lyrics
+
+When lyrics are enabled on your instance, the lyrics button opens a side panel that follows the song. It shows the states "Looking for lyrics", "No lyrics found" and "Couldn't fetch lyrics", with **Try again** and **Add manually** so you can paste your own. Lyrics are for audio only; videos show "No lyrics for videos". See the [Lyrics reference](/reference/lyrics/).
+
+## Video
+
+**Videos** (`/streaming/videos`) has the player on top and an **Up next** rail beside it listing your library with progress. The rail can be hidden, can be cleared, and has an autoplay toggle (**Enable autoplay** or **Disable autoplay**), with a countdown offering **Play now** or **Cancel** when the next video is about to start. Controls include **Shuffle**, **Repeat**, **Fullscreen**, volume and the same quality and speed settings. Space plays or pauses and F toggles fullscreen. Videos you stopped part way offer to resume.
+
+Unlike music, video has no docked or mini player: the floating player that follows you around is for audio only, and a video embedded in a note plays inside that note and pauses when you leave it. See [Notes](/guides/notes/#embeds).
+
+## Playlists
+
+**Playlists** (`/streaming/playlists`) has two kinds:
+
+- **Manual** playlists that you create with **New playlist**: a **Name**, an optional **Description** and optional **Cover artwork** (JPG, PNG, WebP or GIF, up to 4 MB). The playlist page picks up a tint from the cover.
+- **Automatic** playlists that Alexandria creates for you, grouped by **Artist**, **Album**, **Theme** (tag), **Genre** and **Decade**. Tag and genre playlists only appear once a grouping reaches the minimum track count set under [Settings → Auto-playlists](/guides/settings-and-appearance/#auto-playlists).
+
+Filter by **All**, **Auto**, **Manual** or **Favorites**, narrow by kind, search playlists (optionally **Inside tracks**), and sort by **Created**, **Name** or **Track count**. The heart button adds or removes a favorite.
+
+Open a playlist to play it, **Shuffle** it, **Add all to queue**, **Edit playlist** or **Delete playlist**. Manual playlists let you **Add tracks** by searching your library and reorder them by dragging ("Saving order..."), and remove entries from the list.
+
+{/* TODO screenshot: playlist details */}
+
+## Play history
+
+**Play history** (`/streaming/history`, "Stream history") lists what you played, newest first, and feeds "continue listening". Each entry shows **Resume at**, **Total listened**, **Times played** and **Last played**. A listen counts as **Played** once you have heard at least 30 seconds (or half of a track shorter than a minute); shorter ones are labelled **Brief listens**. Filter by **All**, **Brief listens** or **Played**.
+
+## Listening stats and Wrapped
+
+**Listening stats** (`/stats`) turns your play history into recaps. Once you have played something it shows:
+
+- A **Your listening** summary (songs played, listening days) with **Play top songs**.
+- **Annual Wrapped**: one card per year. The current year reads "so far"; past years are final records. Open one for a full Wrapped page with year selector, a shareable image (**Export**, made on your device) and a palette switcher. Monthly recaps are listed alongside, each with tracks, artists and listening days.
+- A **Listening timeline**: a day-by-day heat map you can step through year by year.
+
+Until you have played music the page shows a welcome page instead. The Home page's **Latest recap** and **Top songs** widgets show the same data.
+
+---
+
+Related: [Tags & Auto-Tagging](/guides/tags-and-auto-tagging/) · [Automation](/guides/automation/) · [Lyrics reference](/reference/lyrics/) · [Streaming internals](/development/streaming-playlists/)

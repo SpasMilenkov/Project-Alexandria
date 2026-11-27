@@ -71,8 +71,10 @@ Use `stop` for ordinary downtime and `up -d --no-build --pull never` with the sa
 User guides:
 
 - [Installation](../Docs/src/content/docs/getting-started/installation.mdx)
+- [Using the Builder](../Docs/src/content/docs/guides/using-the-builder.mdx)
 - [First steps and client trust](../Docs/src/content/docs/getting-started/first-steps.mdx)
-- [Operations, named failures, backup and restore](../Docs/src/content/docs/guides/operations.mdx)
+- [Operations and named failures](../Docs/src/content/docs/guides/operations.mdx)
+- [Backup and restore](../Docs/src/content/docs/operations/backup-and-restore.mdx)
 - [Separate reference Compose workflow](../Docs/src/content/docs/getting-started/manual-installation.mdx)
 
 Developer hot reload remains the separate `run-dev.sh` / `docker-compose.dev.yml` workflow. Test and acceptance commands are in [the test guide](Builder.Tests/README.md).

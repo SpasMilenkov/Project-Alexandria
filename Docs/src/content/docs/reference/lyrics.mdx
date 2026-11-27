@@ -5,10 +5,10 @@ description: How Alexandria fetches, caches, and serves synced lyrics for your m
 
 import { Aside, Steps, Tabs, TabItem, Badge } from '@astrojs/starlight/components';
 
-Alexandria can fetch synced (LRC) and plain-text lyrics for your library automatically. When a track finishes processing, Alexandria looks up lyrics for it from an external provider and caches the result — no action needed on your part. If no match is found, or if you'd rather use your own, you can upload lyrics manually.
+Alexandria can fetch synced (LRC) and plain-text lyrics for your library automatically. The first time lyrics are requested for a track (for example, when you open the lyrics panel), Alexandria looks them up from an external provider and caches the result, so later requests are instant. If no match is found, or if you'd rather use your own, you can upload lyrics manually.
 
 <Aside type="tip">
-  **TL;DR**: Set `LYRICS_ENABLED=true` in your `.env` and lyrics will be fetched automatically for new tracks. Currently lyrics are sourced from [Lrclib](https://lrclib.net), a free public lyrics database. If you upload your own lyrics for a track, they're protected and will never be overwritten automatically.
+  **TL;DR**: Set `LYRICS_ENABLED=true` in your `.env` and lyrics will be fetched automatically the first time you open them for a track. Currently lyrics are sourced from [Lrclib](https://lrclib.net), a free public lyrics database. If you upload your own lyrics for a track, they're protected and will never be overwritten automatically.
 </Aside>
 
 ---
@@ -120,7 +120,7 @@ LrcLib can return two formats:
 ```mermaid
 stateDiagram-v2
     [*] --> Fetched: Upload lyrics (POST /lyrics)
-    [*] --> PendingFetch: Transpilation job created
+    [*] --> PendingFetch: lyrics first requested
 
     PendingFetch --> Fetched: worker succeeds
     PendingFetch --> FetchFailed: worker fails

@@ -5,11 +5,11 @@ description: Distinguish the repository reference stack from an installer-genera
 
 import { Aside } from '@astrojs/starlight/components';
 
-For a new private-LAN installation, follow the [Builder guide](/getting-started/installation/). For a generated stack, use the project-specific commands in `INSTALLATION.txt` and the [operations and recovery guide](/guides/operations/). Do not combine a generated installation's `.env`, project identity or volumes with the repository's reference Compose file.
+For a new private-LAN installation, follow [Installation](/getting-started/installation/) and the [Builder guide](/guides/using-the-builder/). For a generated stack, use the project-specific commands in `INSTALLATION.txt` and the [operations and recovery guide](/guides/operations/). Do not combine a generated installation's `.env`, project identity or volumes with the repository's reference Compose file.
 
 ## Repository reference stack
 
-`docker-compose.local.yml` is the manually maintained reference stack at the source root. It is a separate workflow: it uses fixed container names, includes both audio classifiers, and has its own configuration mounts and host-port choices. Merely changing its Compose project name does not eliminate fixed-name collisions. It is not the installer-generated single-port/selected-capability contract, and its defaults are not a verified fresh-install recipe.
+`docker-compose.local.yml` is the manually maintained reference stack at the source root. It is a separate workflow: it uses fixed container names, includes both audio classifiers, publishes fixed host ports (80 and 443 for the proxy, and `127.0.0.1:3000` and `127.0.0.1:9090` for Grafana and Prometheus), and reads its configuration from files you create beside it. Merely changing its Compose project name does not eliminate fixed-name collisions. It is not the installer-generated single-port/selected-capability contract, and its defaults are not a verified fresh-install recipe. Backend images ship without `appsettings.json`, so the Compose file passes every backend setting as environment; the `appsettings.Template.json` files are not needed.
 
 <Aside type="caution">
 Operate the reference stack only after reviewing its complete current configuration. Do not run these examples against an existing installation as a repair shortcut. Keep developer `docker-compose.dev.yml` / `run-dev.sh` usage in the [development guide](/guides/set-up-development-environment/).
@@ -19,15 +19,18 @@ The current source files are the authority. Copy values from the templates shipp
 
 | Source asset | Manual responsibility |
 | --- | --- |
-| `.env.template` | Create a protected `.env`; supply database, admin, broker/worker, exporter, JWT, CSRF and Grafana values. Keep established service credentials unchanged. |
-| `garage.template.toml` | Create `garage.local.toml` with matching RPC/admin/metrics secrets, paths and layout configuration. |
-| `rabbitmq/rabbitmq.template.conf` and `rabbitmq/definitions.template.json` | Supply the mounted broker configuration and verify each actual worker identity, vhost and queue. |
-| API/worker `appsettings.Template.json` files | Supply any configuration the actual host needs that is not explicitly bound in Compose. The templates are examples, not automatically loaded runtime defaults. |
-| `nginx/nginx.conf` and `nginx/certs/` | Supply the proxy's expected certificate/key names and a valid certificate for the exact chosen public host/IP. Establish client trust separately. |
-| `Frontend/Dockerfile`, `.env` and Compose build arguments | Review API origin, browser crypto settings and UI feature flags before building. Frontend settings are build-time inputs. |
-| `classificators/essentia/model-requirements.tsv` and model checksums | Supply every model asset required by the classifiers you actually include. The reference includes both; Builder selects at most one. |
+| `.env.template` | Copy to a protected `.env` at the source root and fill every value. Compose refuses to start when a required value is empty, including `BASE_URL`, `GARAGE_S3_PUBLIC_ENDPOINT`, `GRAFANA_PASSWORD`, `POSTGRES_EXPORTER_PASSWORD` and both `CORS_ALLOWED_ORIGINS__0` and `CORS_ALLOWED_ORIGINS__1`. Keep established service credentials unchanged. |
+| `garage.template.toml` | Copy to `garage.local.toml` (the file Compose mounts) and fill the metadata and data paths (`/var/lib/garage/meta` and `/var/lib/garage/data` in the container), the database engine, RPC secret, admin token and metrics token. The metrics token must equal `GARAGE_S3_METRICS_TOKEN` in `.env`. |
+| `rabbitmq/rabbitmq.template.conf` | Copy to `rabbitmq/rabbitmq.conf` (the file Compose mounts). The template points at `/etc/rabbitmq/definitions.json`, but the reference Compose mounts the rendered definitions at `/etc/rabbitmq/definitions/definitions.json`, so change `management.load_definitions` to that path. |
+| `rabbitmq/definitions.template.json` | Mounted as is. The `rabbitmq-config` job renders it with `envsubst` from the `.env` passwords into a volume; verify each worker identity, vhost and queue. `rabbitmq/enabled_plugins` is tracked and mounted as is. |
+| `prometheus.template.yml` | Copy to `prometheus/prometheus.yml` (the file Compose mounts) and replace the token placeholder with `GARAGE_S3_METRICS_TOKEN`. Only needed for the monitoring profile. |
+| `nginx/nginx.conf` and `nginx/certs/` | The proxy expects `nginx/certs/self-signed.crt` and `nginx/certs/self-signed.key`, for the exact public host or IP you use. Establish client trust separately. The certs folder is git-ignored. |
+| `Frontend/Dockerfile`, `.env` and Compose build arguments | `PBKDF2_ITERATION_COUNT`, `STREAMING_ENABLED`, `AUTOTAGGING_ENABLED` and `LYRICS_ENABLED` from `.env` are passed as `VITE_*` build arguments and baked into the bundle. Each defaults to false when unset (the template ships `STREAMING_ENABLED=false`), so review them before building and rebuild the frontend after changing them. |
+| `classificators/essentia/model-requirements.tsv` and model checksums | The model files are git-ignored. The reference runs both classifiers with model verification on, so prepare both `effnet` and `maest` files in `classificators/essentia/models`. See the download helper in the [Builder guide](/guides/using-the-builder/#audio-analysis-models). |
 
 Use one coherent HTTPS origin for browser access, CORS, public storage URLs and proxy routing. Review all `ports:` entries yourself; reference Compose does not gain the installer's one-port boundary by copying its `.env`. A stable LAN address and a trusted matching certificate are required for browser cryptography. Do not bypass certificate warnings.
+
+The Grafana, Prometheus, cAdvisor, exporter, Alloy and Loki services carry the `monitoring` profile, so they only start when you add `--profile monitoring` to the Compose command.
 
 ## Explicit reference commands
 
@@ -55,7 +58,7 @@ For an operator who has completed the manual configuration, the bootstrap order 
 1. Build the reviewed reference services with `alexandria_reference_compose build`. Resolve build errors using build output before looking for container logs.
 2. Start database, storage and messaging with `alexandria_reference_compose up -d postgres garage rabbitmq-config rabbitmq`. Check their status and readiness with `ps --all` and targeted service logs.
 3. Run the storage setup job with `alexandria_reference_compose up -d --no-deps garage-init`. Wait for successful exit before starting consumers. Review the protected `init-output/garage-credentials.env` handoff locally and persist **all** generated application, preview-worker and transpilation-worker key pairs in the matching `.env`. Do not expose them in logs or support messages. Manual operators own this merge; Builder automates and verifies it for generated installations.
-4. Only after complete credentials and configuration are available, use `alexandria_reference_compose up -d --no-build` for the reviewed stack. If a consumer had already started with placeholder keys, recreate that affected service with its corrected environment; a process restart alone does not update container environment values.
+4. Only after complete credentials and configuration are available, use `alexandria_reference_compose up -d --no-build` for the reviewed stack (add `--profile monitoring` before `up` to include the monitoring services). If a consumer had already started with placeholder keys, recreate that affected service with its corrected environment; a process restart alone does not update container environment values.
 5. Check every included service, database/admin bootstrap, exact HTTPS origin and browser sign-in. Then perform the [client and file checks](/getting-started/first-steps/), adapting file locations to your reference configuration.
 
 Keep the reference stack's existing settings and volume identities for subsequent starts. Do not rotate database, Garage or broker credentials to fix a readiness error. Consult [consistent backups and recovery](/guides/operations/) before modifying established state; use the reference helper and its actual volume names for this workflow.

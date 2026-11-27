@@ -1,0 +1,74 @@
+---
+title: Access Policies
+description: Attach automation rules to a folder so new uploads are processed for you.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+A **policy** attaches automation rules to a folder. Instead of processing every upload by hand, you tell Alexandria once what should happen to files that land in a folder, and it queues the work each time one arrives.
+
+In the interface a policy is called **Automation**, and it lives in the folder's details panel. This page explains how policies behave. For the click-by-click setup and examples, see [Automating Your Library](/guides/automation/).
+
+<Aside type="caution">
+  A policy reacts to files as they are uploaded (and to new versions, if you ask it to). Adding a rule does not convert or process files already in the folder, with one exception: Auto-tag rules also queue the audio that is already there.
+</Aside>
+
+{/* TODO screenshot: policy editor */}
+
+## How a Policy Works
+
+A policy belongs to one folder and holds any number of **rules**. Each rule pairs a trigger (which files) with an action (what to do):
+
+| Part | Options |
+|---|---|
+| Trigger: which files | **All eligible files**, or **Specific types** chosen from Images, Videos, Audio, Documents, Spreadsheets, Presentations, Archives, Code and Text |
+| Action: what to do | **Transcode**, **Auto-tag** or **Backup** (not implemented yet) |
+| Also run on new versions | On or off. Off by default in the rule dialog |
+| Run order | **First**, **Early**, **Normal** or **Late** |
+
+File types are matched by the file's MIME type, so a `.flac` and a `.mp3` both count as Audio.
+
+When a file finishes uploading, Alexandria finds the folder's policy, skips rules that do not match the file (or that are not set to re-run for a new version), and queues one job per matching rule in run order. Rules for different actions do not conflict, so a music file can be converted and tagged by two rules at once. Each rule is independent: if one fails to queue, the others still run.
+
+## What the Actions Do
+
+- **Transcode** queues a streaming conversion for the file with the audio or video qualities you selected, and generates its media preview. The result shows up on the **Conversions** page and in the media library. See [Streaming & Playlists](/guides/streaming-and-playlists/). Video qualities go from 360p to 2160p, audio from 96 to 320 kbps. "All eligible files" for Transcode means every audio and video file.
+- **Auto-tag** sends audio files to genre and mood analysis. The results appear as tags on the file. See [Tags & Auto-Tagging](/guides/tags-and-auto-tagging/). It only handles audio, and it needs auto-tagging to be enabled on your installation with an analysis model installed. Otherwise the rule is kept but does nothing, and the rule row says so.
+- **Backup** is shown in the rule dialog as **Coming soon** and can't be picked yet. Backup rules saved by older versions are kept but skipped.
+
+<Aside type="note">
+  The Transcode action needs streaming to be enabled on your installation. The Auto-tag action needs auto-tagging. Both are chosen at install time; see the [install-time settings](/guides/automation/#settings-made-at-install-time).
+</Aside>
+
+## Inheritance
+
+The **Include subfolders** switch in the **Automation** section controls whether a policy also governs nested folders.
+
+When a file arrives, Alexandria looks for the policy to use in this order:
+
+1. The folder's own policy, if it has one.
+2. Otherwise the nearest parent folder whose policy has **Include subfolders** on.
+3. Otherwise nothing runs.
+
+A folder with its own policy is never combined with a parent's. If a subfolder needs the parent's rules plus a few more, copy the rules into the subfolder's own policy.
+
+## What Does Not Trigger a Policy
+
+- Files outside any folder (the library root).
+- Files you encrypt on your own device before upload. The server cannot read them, so it cannot process them. See [Encryption](/guides/encryption/).
+- Files that were in the folder before the rule existed (except Auto-tag, as above).
+- Files that are moved into a folder afterwards. Rules react to uploads, not to moves.
+
+## Who Can Use Policies
+
+Policies are personal. Any signed-in user can create, change and remove policies on folders they own, and they act on that user's uploads. No administrator rights are needed. An administrator's role is limited to enabling the underlying features at install time and watching the background services on the admin dashboards.
+
+## Typical Setups
+
+- *"Everything in `Music/` gets tagged"*: Auto-tag rule, Audio type (or All eligible files), **Include subfolders** on.
+- *"Videos dropped in `Recordings/` become streamable"*: Transcode rule, Videos type, the qualities you want.
+- *"Re-exported clips are converted again"*: add **Also run on new versions** to the Transcode rule.
+
+---
+
+Related: [Automating Your Library](/guides/automation/) · [Uploads & Previews](/guides/uploads-and-previews/) · [Streaming & Playlists](/guides/streaming-and-playlists/)

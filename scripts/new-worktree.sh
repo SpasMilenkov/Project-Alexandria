@@ -1,0 +1,211 @@
+#!/usr/bin/env bash
+# Creates a sibling git worktree for a branch and brings over the gitignored local files a
+# fresh checkout lacks, so parallel work gets their own bin/obj while sharing docs.
+#
+#   Copied (per worktree, safe to diverge): appsettings*.json, .env files, local stack config.
+#   Linked (one shared copy):               plans/, completed/, Essentia model files, and
+#                                           skills/ on branches that do not track it yet.
+#
+# It never overwrites or deletes: an existing target path aborts the run, and any file the
+# branch already tracks is left as checked out. Remove a worktree with `git worktree remove`.
+#
+# Usage: scripts/new-worktree.sh <branch> [--base <ref>] [--path <dir>] [--no-fetch] [--dry-run]
+#   <branch>      local branch, remote branch on origin, or a new branch name
+#   --base <ref>  start point when the branch exists nowhere yet (default: origin/main)
+#   --path <dir>  worktree location (default: ../<branch>, next to the main checkout)
+#   --no-fetch    skip `git fetch origin`
+#   --dry-run     print what would happen without touching anything
+
+set -euo pipefail
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+usage() {
+  sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
+  exit "${1:-0}"
+}
+
+BRANCH=""
+BASE="origin/main"
+TARGET=""
+FETCH=1
+DRY_RUN=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --base) BASE="${2:?--base needs a ref}"; shift 2 ;;
+    --path) TARGET="${2:?--path needs a directory}"; shift 2 ;;
+    --no-fetch) FETCH=0; shift ;;
+    --dry-run) DRY_RUN=1; shift ;;
+    -h|--help) usage 0 ;;
+    -*) die "unknown option $1" ;;
+    *)
+      [[ -z "$BRANCH" ]] || die "only one branch name expected"
+      BRANCH="$1"; shift ;;
+  esac
+done
+
+[[ -n "$BRANCH" ]] || usage 1
+
+# The first worktree listed is the main checkout, which holds the real local config even
+# when this script is run from inside another worktree.
+MAIN="$(git worktree list --porcelain | sed -n '1s/^worktree //p')"
+[[ -n "$MAIN" && -d "$MAIN" ]] || die "not inside a git repository"
+
+if [[ -z "$TARGET" ]]; then
+  TARGET="$(dirname "$MAIN")/${BRANCH//\//-}"
+fi
+
+[[ -e "$TARGET" || -L "$TARGET" ]] && die "$TARGET already exists; refusing to touch it"
+
+run() {
+  if [[ $DRY_RUN -eq 1 ]]; then
+    echo "  [dry-run] $*"
+  else
+    "$@"
+  fi
+}
+
+COPIED=()
+LINKED=()
+START_REF=""
+
+# Checked against the branch's tree rather than the disk, so a dry run gives the same answer.
+is_tracked() {
+  git -C "$MAIN" cat-file -e "$START_REF:$1" 2>/dev/null
+}
+
+copy_item() {
+  local rel="$1"
+  local src="$MAIN/$rel"
+  local dest="$TARGET/$rel"
+
+  [[ -e "$src" ]] || return 0
+  is_tracked "$rel" && return 0
+  [[ -e "$dest" || -L "$dest" ]] && return 0
+
+  run mkdir -p "$(dirname "$dest")"
+  run cp -a "$src" "$dest"
+  COPIED+=("$rel")
+}
+
+link_item() {
+  local rel="$1"
+  local src="$MAIN/$rel"
+  local dest="$TARGET/$rel"
+
+  [[ -e "$src" ]] || return 0
+  is_tracked "$rel" && return 0
+  [[ -e "$dest" || -L "$dest" ]] && return 0
+
+  run mkdir -p "$(dirname "$dest")"
+  run ln -s "$src" "$dest"
+  LINKED+=("$rel")
+}
+
+# A pattern such as `completed/**` ignores a real folder's contents but not a symlink with
+# that name, so such links would show up as untracked and could be committed by accident.
+# info/exclude is shared by every worktree and never committed.
+exclude_unignored_links() {
+  local exclude_file
+  exclude_file="$(git -C "$MAIN" rev-parse --path-format=absolute --git-path info/exclude)"
+
+  for rel in "${LINKED[@]}"; do
+    if [[ $DRY_RUN -eq 0 ]] && git -C "$TARGET" check-ignore -q "$rel"; then
+      continue
+    fi
+
+    if [[ $DRY_RUN -eq 1 ]] && git -C "$MAIN" check-ignore -q --no-index "$rel"; then
+      continue
+    fi
+
+    if [[ -f "$exclude_file" ]] && grep -qxF "/$rel" "$exclude_file"; then
+      continue
+    fi
+
+    echo "Excluding link /$rel via $exclude_file"
+    if [[ $DRY_RUN -eq 0 ]]; then
+      mkdir -p "$(dirname "$exclude_file")"
+      echo "/$rel" >> "$exclude_file"
+    fi
+  done
+}
+
+if [[ $FETCH -eq 1 ]]; then
+  echo "Fetching origin..."
+  run git -C "$MAIN" fetch origin
+fi
+
+echo "Creating worktree at $TARGET"
+
+if git -C "$MAIN" show-ref --verify --quiet "refs/heads/$BRANCH"; then
+  START_REF="refs/heads/$BRANCH"
+  run git -C "$MAIN" worktree add "$TARGET" "$BRANCH"
+elif git -C "$MAIN" show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
+  START_REF="refs/remotes/origin/$BRANCH"
+  run git -C "$MAIN" worktree add --track -b "$BRANCH" "$TARGET" "origin/$BRANCH"
+else
+  git -C "$MAIN" rev-parse --verify --quiet "$BASE^{commit}" >/dev/null || die "base ref $BASE not found"
+  START_REF="$BASE"
+  echo "Branch $BRANCH does not exist yet; creating it from $BASE"
+  run git -C "$MAIN" worktree add --no-track -b "$BRANCH" "$TARGET" "$BASE"
+fi
+
+COPY_ITEMS=(
+  .env
+  .env.dev
+  docker-compose.yml
+  garage.toml
+  garage.local.toml
+  prometheus.yml
+  prometheus
+  rabbitmq/definitions.json
+  rabbitmq/rabbitmq.conf
+  nginx/certs
+  Frontend/.env
+  # Generated by the Vite plugins; copied so type-check works before the first build.
+  Frontend/auto-imports.d.ts
+  Frontend/components.d.ts
+)
+
+for item in "${COPY_ITEMS[@]}"; do
+  copy_item "$item"
+done
+
+for settings in "$MAIN"/Backend/*/appsettings*.json; do
+  [[ -e "$settings" ]] || continue
+  copy_item "${settings#"$MAIN"/}"
+done
+
+for item in skills plans completed; do
+  link_item "$item"
+done
+
+# The folder tracks models.sha256, so link the large model files individually.
+for model in "$MAIN"/classificators/essentia/models/*; do
+  [[ -e "$model" ]] || continue
+  link_item "${model#"$MAIN"/}"
+done
+
+exclude_unignored_links
+
+echo
+echo "Copied ${#COPIED[@]} item(s):"
+for item in "${COPIED[@]}"; do
+  echo "  $item"
+done
+
+echo "Linked ${#LINKED[@]} item(s) to the main checkout:"
+for item in "${LINKED[@]}"; do
+  echo "  $item"
+done
+
+echo
+echo "Next steps:"
+echo "  cd \"$TARGET\""
+echo "  (cd Frontend && pnpm install)    # node_modules is per worktree"
+echo "Builds, unit tests and Testcontainers integration tests can run in parallel across"
+echo "worktrees. Running two docker compose stacks at once still collides on host ports."

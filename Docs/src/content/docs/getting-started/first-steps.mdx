@@ -1,9 +1,9 @@
 ---
 title: First steps after installation
-description: Trust your LAN certificate, sign in and confirm your selected Alexandria features.
+description: Trust your LAN certificate, sign in, walk through onboarding and confirm your selected Alexandria features.
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+import { Aside, Steps } from '@astrojs/starlight/components';
 
 Open `INSTALLATION.txt` in your installation settings folder. It records the exact HTTPS address, administrator email, project, volume names and operational commands. Keep `nginx/CLIENT-TRUST.txt` alongside it. Server checks and successful installer authentication do not establish certificate trust or browser access on another device.
 
@@ -17,14 +17,52 @@ Visit the exact address in `INSTALLATION.txt`, including any custom port. If a c
 
 Builder changes no client trust stores, firewall rules or router settings. If the server works locally but a second device cannot connect, check LAN reachability, the host firewall's chosen TCP port, DNS and Wi-Fi client isolation.
 
-## Sign in and check a second device
+## Sign in
 
-Sign in with the administrator account selected during setup. Builder verifies fresh administrator authentication over HTTPS. A repaired installation preserves its existing account and current password; it does not verify that password again or reset it from a newly entered bootstrap value.
+The sign-in page asks for your **Email** and **Password**, with an optional **Remember me** checkbox. Use the administrator account selected during setup. Builder verifies fresh administrator authentication over HTTPS. A repaired installation preserves its existing account and current password; it does not verify that password again or reset it from a newly entered bootstrap value.
+
+Every account, the administrator's included, then goes through a short **onboarding** flow before it reaches the app. Until it is finished you are sent back to the current onboarding step whenever you open any other page.
+
+## Onboarding
+
+<Steps>
+
+1. **Create your password** (`/onboarding/set-password`)
+
+   Enter the **Temporary password** (for the first administrator, the password chosen during setup; for any other account, the one the administrator gave you), then choose a **New password** and confirm it. A strength meter and a requirements list show progress. The new password needs at least 8 characters, one uppercase letter, one lowercase letter, one number and one special character. The server rejects a password you have already used on the account.
+
+2. **Set up your profile** (`/onboarding/setup-profile`)
+
+   Pick a profile picture (JPEG, PNG, WebP or an animated GIF) and a **Username**, the name shown on your activity and files. You still sign in with your email. Both are optional and can be changed later from [My account](/guides/settings-and-appearance/#my-account). A live preview shows how you will appear.
+
+3. **Take the welcome tour** (`/onboarding/tour`)
+
+   Step through four short slides about the File Explorer, Tags & Categories, Access History, and Storage & Trash, then arrive at the library slides described below. **Get started** finishes onboarding and opens [Home](/guides/settings-and-appearance/#home-widgets).
+
+</Steps>
+
+### Your starter folders
+
+The tour's **Your library** slide lists six folders that are created for you when you finish: **Music**, **Movies**, **Pictures**, **Videos**, **Documents** and **Notes**. Rename any of them now, or later in the explorer like any other folder. Notes keeps its name (it shows a lock), because your [notes](/guides/notes/) live there. Names must be different from each other and cannot contain `/ \ : * ? " < > |`.
+
+If media streaming or automatic tagging is enabled on your installation, an **Automation** slide follows. Each folder that can be automated has a switch:
+
+- **Music** can get streamable copies at chosen bitrates (96 to 320 kbps; 192 and 320 are preselected) and, when auto-tagging is enabled, genre and mood tags.
+- **Movies** can get streamable copies at chosen resolutions (360p to 2160p; 720p and 1080p are preselected).
+- The other folders are plain folders.
+
+Files you later add to an automated folder, including its subfolders, are processed automatically. If you turn a folder's switch off, the folder is still created, just without a rule. These are ordinary folder rules, so you can change them afterwards; see [Automation](/guides/automation/).
+
+<Aside type="note">
+The tour only offers what your installation can run. If streaming is off, you will not see the Automation slide.
+</Aside>
+
+## Check a second device
 
 On the server and on another trusted LAN device:
 
 1. Sign in, refresh the page and open a direct library link. Sign out and sign in again.
-2. Upload a small disposable file, download it and confirm the contents match. Include an encrypted file to check the browser's HTTPS-dependent cryptography path.
+2. Upload a small disposable file, download it and confirm the contents match. Include an encrypted file to check the browser's HTTPS-dependent cryptography path (see [Encryption](/guides/encryption/)).
 3. For enabled capabilities, check an image/media preview, a document preview and converted audio/video playback after processing completes. Check covers and playlists under your signed-in account.
 4. If monitoring is enabled, open `/monitoring/` at the same HTTPS origin. Grafana uses its own saved account; confirm the dashboards, metrics and logs load.
 
@@ -38,11 +76,15 @@ Builder owns deployment configuration: project identity, folders, services, netw
 
 | Setting | Where to change it |
 | --- | --- |
-| Appearance, notifications and behavior | `/settings` |
-| Automatic tag regression, metadata overwrite and automatic-playlist threshold | `/settings` |
-| Upload validation and hash-match policy | `/dashboard/admin/system-configuration` |
-| Per-user storage quota | Administrator user registry |
+| Appearance, notifications and behavior | **Settings** (`/settings`) |
+| Automatic tag regression, metadata overwrite and automatic-playlist threshold | **Settings** (`/settings`) |
+| How long activity history is kept (30 to 3650 days, default 730) | **Admin → Configuration** (`/dashboard/admin/system-configuration`) |
+| Per-user storage quota | **Admin → Users** (user registry) |
 
-New users default to a **10 GiB** quota. This differs from Garage's default **10 decimal GB** layout capacity; neither is the host's free disk space. Automatic tag regression and metadata overwrite default off, and the automatic-playlist threshold defaults to 10. Trusted-upload validation skipping and hash-match upload skipping default off. Do not invent environment overrides for database-owned settings.
+New users default to a **10 GiB** quota. This differs from Garage's default **10 decimal GB** layout capacity; neither is the host's free disk space. Automatic tag regression and metadata overwrite default off, and the automatic-playlist threshold defaults to 10. Do not invent environment overrides for database-owned settings.
 
-Record the source revision and secure a consistent backup before storing important data or upgrading. [Operations and backups](/guides/operations/) covers safe stop/start, repair and restore; the [manual guide](/getting-started/manual-installation/) explains the separate reference Compose workflow.
+<Aside type="note">
+There is no screen for an upload size limit or an upload-validation policy. The Configuration page holds only the activity-history retention setting. See [Uploads & Previews](/guides/uploads-and-previews/#size-limits) for the limits that do apply.
+</Aside>
+
+Record the source revision and secure a consistent backup before storing important data or upgrading. [Operations and backups](/guides/operations/) covers safe stop/start, repair and restore; the [manual guide](/getting-started/manual-installation/) explains the separate reference Compose workflow. Next, read [Files & Versioning](/guides/files-and-versioning/) and the [administration guide](/guides/administration/).

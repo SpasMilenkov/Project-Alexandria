@@ -1,0 +1,109 @@
+---
+title: Administration
+description: The admin area for administrators, covering users, storage, access and security, system health, incidents and the public status page.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+<Aside type="caution" title="Administrators only">
+  Everything on this page is in the **Admin** section of the sidebar, which only accounts with the **Administrator** role can see. Other accounts who open these addresses are turned away.
+</Aside>
+
+The **Admin** section has eight entries: **Overview**, **Users**, **Storage**, **Access & security**, **System vitals**, **Incidents**, **Integrations** and **Configuration**.
+
+## Overview
+
+**Overview** (`/dashboard/admin`, titled "Administration") is the landing page. A badge next to the title shows the overall system state, and a **Service health** strip shows each monitored service. Below it, cards link to the other pages in three groups:
+
+- **Operations**: System health, Incident history and Integrations.
+- **Users and storage**: User registry, Storage, and Access & security.
+- **Configuration**: System configuration.
+
+## User registry
+
+**Users** (`/dashboard/admin/user-registry`) manages accounts, roles and access restrictions.
+
+- Search by username, sort, and open **Filters** to narrow by email, **Role** (any, **User**, **Administrator**), **Accounts** (**Existing**, **All** or **Deleted**) and **Lock status** (**Any**, **Unlocked**, **Locked**) and by dates. Active filters show as pills with **Clear all**.
+- Expand a row to see when the account was last modified, its **Access restriction**, **Account standing** and **Storage used** against its quota.
+
+### Creating a user
+
+Press **New user**. The **New account** dialog asks for:
+
+- **Username** (2 to 50 characters: letters, numbers, dots, dashes, underscores) and **Email address**.
+- **Temporary password**: **Password** and **Confirm password**, with a strength meter. The server requires at least 8 characters with an uppercase letter, a lowercase letter, a number and a special character.
+- **Role**: **User** or **Administrator**.
+- **Storage quota** in GB. Leave it empty for the default of 10 GB; enter 0 for unlimited.
+
+<Aside>
+  Alexandria does not send email. Pass the username and temporary password to the person yourself. On their first sign-in they are taken through [onboarding](/getting-started/first-steps/#onboarding), where they replace the temporary password with their own.
+</Aside>
+
+### Managing a user
+
+Each row's menu, and the buttons in an expanded row, offer:
+
+- **Edit details**: change username, email, **Role** or **Storage quota**. The quota box starts empty and shows the current value as a placeholder; leaving it empty keeps the current quota.
+- **Restrict access**: lock the account until a chosen future date (**Lockout ends on**). **Lift restriction** removes it. A locked account cannot sign in.
+- **View activity**: opens the account's entries in the full log (see below).
+- **Delete account**: accounts are soft-deleted rather than erased, and select-and-delete works on several at once. A deleted account is listed under the **Deleted** filter.
+
+## Storage
+
+**Storage** (`/dashboard/admin/storage`) shows server-wide capacity and use:
+
+- Tiles for **Garage capacity**, **Server disk free** and **Assigned quotas**. Garage capacity is the layout capacity set at install, which is not the same as your host's free disk space.
+- A **Storage breakdown** chart ("Server-wide usage by artifact type") split into Files, Previews and Transcoded.
+- **Top consumers**: usage per account, split by artifact type.
+- **Garage nodes**: role capacity per layout node.
+
+A per-person view of the same idea is **My storage**, described in [Files & Versioning](/guides/files-and-versioning/#my-storage).
+
+## Access & security
+
+**Access & security** (`/dashboard/admin/activity`) has two tabs, **Overview** and **Full log**.
+
+**Overview** summarizes sign-in activity over a **Time window** of 30, 60 or 90 days:
+
+- Tiles for **Active accounts**, **Live sessions**, **Failed sign-ins** (compared with the previous window) and **Locked accounts**.
+- **Accounts**: each account's last sign-in, sign-ins, live sessions, new networks and failed attempts, with a status. Select an account to see its log.
+- **Networks**: the addresses people signed in from, with new ones marked.
+- **Failed sign-ins**: why they failed (such as no account with that email), where they came from, and emails that have no account.
+
+**Full log** (`/dashboard/admin/activity/log`, "Activity log") is the audit trail. It shows a **Timeline** of events with filters for **When**, **People** ("Done by"), **What happened** and **Origin** (source), a **Live** switch that refreshes every 15 seconds, and an **Export** menu that downloads **CSV** or **JSON**.
+
+<Aside type="note">
+  The admin log is deliberately limited. It covers sign-ins, accounts, roles, quotas, sessions, jobs, incidents and system changes. Users' libraries stay private: files, folders, tags, playlists, share links and personal settings never appear in it, yours included. Your own library history is in **Access history** in the Library section of the sidebar. See [Audit logging](/development/audit-logging/) for the technical side.
+</Aside>
+
+## Configuration
+
+**Configuration** (`/dashboard/admin/system-configuration`) currently holds one setting: **Activity history**, the **Keep activity for** number of days (30 to 3650, default 730). Records older than this are removed by a daily cleanup, and the panel shows when the last cleanup ran. Changes save automatically.
+
+There is no upload size setting. See [Uploads & Previews](/guides/uploads-and-previews/#size-limits).
+
+## System vitals
+
+**System vitals** (`/dashboard/admin/service-status`) shows live checks with an overall badge, when they were last run and a refresh button. Checks are grouped into **Infrastructure** (database, message queue, file storage), **Messaging** (the message relay that hands work to workers) and **Workers** (document, media, media metadata, lyrics and transpilation). Below them are resource panels for the API process: memory usage and cleanups, uptime, CPU time and threads.
+
+## Incidents
+
+**Incidents** (`/dashboard/admin/incident-history`) is the history of problems. It repeats the **Service health** strip, shows an **Incident calendar** you can filter by service and move through by month and year (click a day, then **View events**), and an **Incident Log** you can filter by service, type, severity and status (**Active** or **Resolved**). Links from other pages, such as the health strip, open this page already filtered.
+
+## Integrations
+
+**Integrations** (`/dashboard/admin/integrations`) is a set of **monitoring dashboards**, one per background feature: **Audio analysis**, **Transcoding**, **Previews**, **Playlists**, **Lyrics** (when lyrics are enabled) and **Auto-tagging**. Each card shows live status and opens a page with queue depth, failure rates, throughput and history. They have no settings to change.
+
+Some pages include recovery tools for stuck work, such as a list of failed jobs with **Requeue** and **Requeue all**, and on the Integrations page a **Message relay** panel with **Resend dead** for messages the broker keeps refusing. The Previews page also shows how many documents could be text-searched, and why others could not.
+
+Rules that decide what happens to files when they are added to a folder (conversion, auto-tagging and so on) are not here. They are folder rules; see [Automation](/guides/automation/) and [Access policies](/guides/access-policies/).
+
+## The public status page
+
+`/status` is a page that **anyone can open without signing in**. It shows "Alexandria Status" with an overall state ("Operational", "Degraded" or "Down"), how many services are running normally, and a bar of daily history for each service over the last 90 days (30 on a phone), with operational percentages and "Clean days" and "Last disruption" tiles. It refreshes every minute.
+
+Services are shown under friendly names (**Core Platform**, **Document Previews**, **Lyrics Lookup**, **Audio Analysis**, **Media Previews**, **Playlists**, **Video Streaming**) with only a state per day. Share the address with the people who use your instance if you want them to be able to check it.
+
+---
+
+Related: [Settings & Appearance](/guides/settings-and-appearance/) · [Operations and backups](/guides/operations/) · [Monitoring dashboards](/operations/monitoring-dashboards/) · [Troubleshooting](/operations/troubleshooting/)

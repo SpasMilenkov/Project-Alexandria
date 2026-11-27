@@ -1,0 +1,81 @@
+---
+title: Troubleshooting
+description: Common problems and how to fix them.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Installation & Startup
+
+### A container won't start
+
+```bash
+docker compose -f docker-compose.local.yml -p alexandria-local ps
+docker compose -f docker-compose.local.yml -p alexandria-local logs <service>
+```
+
+Usual suspects: missing `.env` values, port conflicts, or (for nginx) missing TLS certs in `nginx/certs/`.
+
+### API crashes on boot
+
+The API needs Garage keys — on a **first run** they don't exist until the garage-init container finishes. This is expected: copy keys from `init-output/` into `.env`, then recreate the backend services ([Manual Installation → First Compose Run](/getting-started/manual-installation/#first-compose-run)).
+
+### Health checks time out
+
+PostgreSQL and RabbitMQ start before the app services. If you checked too early, wait; if a dependency is genuinely unhealthy, check its logs first.
+
+## Certificates & Browser Warnings
+
+### "Your connection is not private"
+
+Expected with self-signed certs — accept the warning once per browser. To avoid it entirely you need real certificates (planned for the installer-era deployment flow).
+
+### Uploads/downloads fail from other devices
+
+Your `CORS_ALLOWED_ORIGINS__*` and `GARAGE_S3_PUBLIC_ENDPOINT` must use the same IP/hostname you actually browse from (`https://192.168.x.x`, not localhost).
+
+## Storage & Files
+
+### Previews never appear
+
+Previews come from worker containers. Check they're running and healthy:
+
+```bash
+docker compose -f docker-compose.local.yml -p alexandria-local logs document-worker media-worker
+```
+
+If workers are crash-looping after a reconfiguration, force-recreate them so they pick up new env values.
+
+### A document isn't found by its text
+
+The document worker reads document text in the background, so give a new upload a minute. Then check **Admin → Integrations → Previews → Document text**:
+
+- **Waiting** stays high: the document worker isn't running or keeps failing; check its logs as above
+- **Failed** lists the document: the error says why; *Retry all* queues failures for another try
+- **Can't be searched**: scans need OCR, which Alexandria doesn't do; password-protected, copy-protected and encrypted files are never read
+
+Words shorter than three letters only match file names.
+
+### Upload rejected / size limit hit
+
+Upload limits are an instance policy set by the admin under **Admin → System Configuration**.
+
+### Can't open an encrypted file
+
+Decryption needs the **password used at upload time**. Lost passwords cannot be recovered — see [Encryption](/guides/encryption/).
+
+## Media & Streaming
+
+### No streaming section / tracks won't play
+
+Streaming must be enabled (`STREAMING_ENABLED=true`) **and** files need processing: watch **Streaming → Jobs**, or automate via [Access Policies](/guides/access-policies/).
+
+### Lyrics missing
+
+Lyrics fetch automatically when `LYRICS_ENABLED=true`; not every track exists in the provider's database. You can upload lyrics manually — see [Lyrics](/reference/lyrics/).
+
+## Still Stuck?
+
+- Scan service logs: `docker compose logs -f`
+- Open the in-app **Report a problem** link (sidebar) so incidents land in the admin incident history
+- [Open an issue](https://github.com/SpasMilenkov/Project-Alexandria/issues) with logs attached

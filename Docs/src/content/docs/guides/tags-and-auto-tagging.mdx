@@ -1,0 +1,88 @@
+---
+title: Tags & Auto-Tagging
+description: Organize files with tags, and let audio analysis tag your music for you.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Tags are colored, icon-bearing labels you attach to files. You can create your own, and Alexandria can add genre and mood tags to your music automatically. Tags are how you filter and search across folders, and they also drive some of the [auto-playlists](/guides/automation/#auto-playlists).
+
+{/* TODO screenshot: tags page */}
+
+## Your Tags
+
+Open **Tags** in the sidebar. The page lists your tags as a grid or list (toggle in the header), with a search box ("Search tags...").
+
+**Create a tag.** Choose **New tag**. The **Create New Tag** dialog asks for:
+
+| Field | Notes |
+|---|---|
+| **Tag Name** | Required |
+| **Icon** | Required. Searchable icon picker |
+| **Color** | Required. A **Preview** shows how the tag will look |
+| **Description** | Optional |
+
+**Edit or delete a tag.** Open the actions menu on a tag and choose **Edit** or **Delete**. Deleting a tag removes it from every file that used it. To delete several at once, select them (Ctrl or Cmd click to add, Shift click for a range) and choose **Delete** in the header or press the Delete key.
+
+## Attaching Tags to Files
+
+- **From the file explorer:** open a file's details panel, find the **Tags** section and choose **Add tag**. Type in "Search tags..." to narrow the list.
+- **From the music library:** on a track's details page, use the **Add tag** picker in the **Tags** card.
+
+To remove a tag from a file, remove it from the same list. Removing a tag you added yourself just deletes the link. Removing an automatic tag is remembered, as described below.
+
+## Finding Files by Tag
+
+In the file explorer's search, add the **tag** filter ("Files with a tag") and pick a tag. Searching on the Tags page itself finds tags, and its results include system tags.
+
+## System Vocabulary
+
+Your instance can ship a **system vocabulary** of music tags: genre families with their sub-genres (Rock, then Nu Metal, and so on), standalone genres, and mood tags. It is seeded automatically and shared across the library.
+
+- Use the **Show system vocabulary** button (the library icon in the Tags page header; it reads **Hide system vocabulary** once open) to reveal a **System vocabulary** section under your own tags. It carries a **Read only** badge. If nothing has been seeded it says "No system tags yet".
+- System tags cannot be edited, deleted or selected in bulk.
+- You can attach system tags to your files like any of your own tags.
+
+## Auto-Tags
+
+Auto-tagging analyzes audio and attaches genre and mood tags from the system vocabulary. It works on audio files only.
+
+<Aside type="note">
+  Auto-tagging has to be available on your installation: automatic tagging switched on and an audio analysis model installed (chosen at install time, in the Builder). If it is not, the **Auto-tag** button, the **Auto-tagging** settings section and the Auto-tag rule action are all hidden. See [install-time settings](/guides/automation/#settings-made-at-install-time).
+</Aside>
+
+### How tagging starts
+
+There are two ways, and neither needs an administrator:
+
+1. **A folder rule.** An **Auto-tag** rule on a folder tags new audio as it is uploaded, and queues audio that is already in the folder when you add or edit the rule. See [Automating Your Library](/guides/automation/#folder-rules) and [Access Policies](/guides/access-policies/).
+2. **By hand.** Choose **Auto-tag** in the **Tags** section of a file's details panel, or on the track's details page. If the file has already been analyzed, nothing is queued again.
+
+Analysis runs in the background in batches, so tags appear a little after you ask, not instantly. Files whose analysis failed are retried automatically a limited number of times, with a cooldown (24 hours by default) between attempts.
+
+### What gets tagged
+
+- **Genre.** The model scores genres, and the top three predictions that score above a confidence threshold (0.1 by default) become tags.
+- **Mood.** Mood is judged on axes with two poles. A pole is tagged when it clearly wins (0.65 or higher by default). A near 50/50 split tags neither.
+- **Best model wins.** If more than one analysis model has seen a file, the higher-priority model decides each category. Re-analysis can improve a tag but cannot silently downgrade it.
+
+### Control what re-runs may change
+
+Under **Settings** → **Auto-tagging** ("What happens when tagging runs again") you decide how re-analysis treats what is already there:
+
+- **Allow confidence regression** (off by default): when off, a re-run never lowers the confidence of a tag already on a file.
+- **Allow automatic metadata overwrite** (off by default): when off, automatic processing never replaces a title, artist, album, year or genre already on a file, so your corrections survive.
+
+Tags you add or remove yourself are never touched by these switches.
+
+<Aside type="tip">
+  Removing an automatic tag doesn't delete it forever. It is suppressed, so future analysis will not add it back. Adding it by hand again turns it into a normal tag of your own.
+</Aside>
+
+## Tags and Playlists
+
+Tags feed the auto-playlists on the **Playlists** page: genre tags become **Genre** playlists and mood or other tags become **Theme** playlists, once there are enough streamable tracks (**Settings** → **Auto-playlists** → **Minimum tracks per tag or genre playlist**). Editing a file's tags updates these playlists automatically. See [Auto-Playlists](/guides/automation/#auto-playlists).
+
+---
+
+Related: [Automating Your Library](/guides/automation/) · [Access Policies](/guides/access-policies/) · [Files & Versioning](/guides/files-and-versioning/)

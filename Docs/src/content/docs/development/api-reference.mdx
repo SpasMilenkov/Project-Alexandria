@@ -1,0 +1,80 @@
+---
+title: REST API Reference
+description: Endpoint catalog by feature area — 122 endpoints under /api/v1.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+All endpoints are FastEndpoints classes under `Backend/Alexandria.Api/Features/` — one class per endpoint, grouped in feature folders. Routes live under `/api/v1/`, authentication is cookie-based JWT (see [Authentication](/development/authentication/)), and the default policy requires the `User` or `Admin` role unless noted.
+
+<Aside type="tip">
+  The API exposes a Swagger document in development (<code>UseSwaggerGen</code>), which is the precise route/verb source while this catalog stays at feature level.
+</Aside>
+
+<Aside type="note">
+  This page is intentionally kept at feature level — a hand-maintained per-endpoint listing would rot too fast. Endpoint-level documentation is planned to be generated automatically from the OpenAPI/Swagger document instead.
+</Aside>
+
+## Auth — `Features/Auth/`
+
+Login, Logout, RefreshToken (rotation), ChangeInitialPassword, ResetPassword, StreamCheck & PreviewCheck (Nginx `auth_request` targets). Anonymous except where noted.
+
+## Users — `Features/Users/`
+
+CreateUser, DeleteUser, UpdateUser, RestrictUser · GetUserProfile, GetUsers · SetupProfile, GetOnboardinStatus, FinishTour (onboarding) · GetUserActivity, GetUserFileCount, GetUserStorageUsage.
+
+## Storage: Files — `Features/Storage/Files/`
+
+| Group | Operations |
+|---|---|
+| CRUD | GetFileById, GetFilesByDirectoryId, GetRootFiles, SearchFile, UpdateFileMetadata |
+| Search | GetContentMatches: excerpts around a search's words in the file's document text, owner only, trashed files included (`SearchFile` sets `matchedInContent` on text matches) |
+| Lifecycle | DeleteFile, RestoreFiles, ChangeActiveVersion |
+| Versions | GetVersionsForFile, DownloadVersionById, DeleteFileVersion, RestoreFileVersion |
+| Upload | InitiateFileUpload, FinalizeFileUpload ([pipeline](/development/upload-pipeline/)) |
+| Download | DownloadFileById, BulkDownloadInit + BulkDownload (ZIP streaming) |
+| Previews | Preview/thumbnail per file **and** per version (4 endpoints) |
+| Move/Copy | MoveFiles, CopyFiles |
+| Analysis | AutoTag, Enrichment (per-file enrichment lookup) |
+
+## Storage: other — `Features/Storage/`
+
+- `Directories/` — subdirectory listing + search
+- `Metrics/` — storage totals and breakdown
+- `SignedUrls/` — share links: create, public get/download, list for file, revoke (see [Sharing](/development/sharing-signed-urls/))
+
+## Streaming — `Features/Streaming/`
+
+GetFilesForStreaming, QueueTranspilationJob, GetTranspilationJobs · StartSession, CloseSession, GetFileSessions, GetHistory, GetHistoryByFile.
+
+### Playlists — `Streaming/Playlists/`
+
+Full CRUD + AddPlaylistItem, ReorderPlaylistItems, cover upload/get.
+
+### Lyrics — `Streaming/Lyrics/`
+
+GetLyrics, UploadLyrics, DeleteLyrics, QueueRefetch, ChangeLyricsProvider — detailed reference in [Lyrics](/reference/lyrics/).
+
+## Tags — `Features/Tags/`
+
+CreateTag, DeleteTag, UpdateTags, SearchTags, GetTagsForFile, AddTagsToFile, RemoveTagFromFile, SearchFileByTags. System taxonomy tags are read-only; auto tags carry confidence (see [Audio Analysis](/development/audio-analysis/)).
+
+## Policies — `Features/Policies/`
+
+CreatePolicy, GetPolicy, UpdatePolicy, DeletePolicy + AddRule, UpdateRule, DeleteRule.
+
+## Settings & Admin
+
+- `Features/Settings/` — appearance/behavior CRUD + background image upload/get/delete
+- `Features/Admin/Settings/` — activity-history retention get/update (`RequireAdmin`)
+- `Features/Admin/Enrichment/` — audio-analysis analytics: batches, queue depth, stuck, failure rate, duration, volume-by-hour
+- `Features/Admin/DocumentTextStats/` — document text coverage: overview (counts per status, waiting, recent failures) and retry-failed, which writes a `DocumentTextRetried` audit entry
+
+## Activity & Monitoring
+
+- `Features/Activity/` — audit feed + calendar summary
+- `Features/Monitoring/` — resource usage, server status; plus the anonymous `/status` page surface
+
+---
+
+<Aside type="note">**Verified against:** full <code>*Endpoint.cs</code> enumeration (122 files) across Features/, Swagger registration in FastEndpointsExtensions.cs.</Aside>

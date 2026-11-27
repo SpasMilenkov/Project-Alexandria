@@ -1,0 +1,44 @@
+---
+title: Audit Logging
+description: How activity is recorded — DB triggers, application events, and querying the trail.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Alexandria keeps a comprehensive audit trail combining two mechanisms: **database triggers** that capture row-level changes, and **application-level logging** for high-level user actions. Both land in the `AuditLog` table.
+
+## Two Capture Paths
+
+| Path | Mechanism | Captures |
+|---|---|---|
+| DB triggers | Postgres `audit_trigger` function on domain tables (migration `AuditTriggers`) | Row-level INSERT/UPDATE/DELETE with old/new data — catches everything, even changes made outside the app |
+| Application layer | `AuditService.LogAsync` calls in endpoints/handlers + `AuditInterceptor` on EF saves | Semantic events with actor context (`AuditEventCode`) |
+
+The application path stamps the acting user (propagated via context); system-initiated writes use the seeded system account GUID and are explicitly blocked from logging in as a real login.
+
+## Event Codes
+
+`AuditEventCode` groups semantically:
+
+- File lifecycle — created, renamed, moved, soft-deleted, restored, permanently deleted
+- Version lifecycle — per-version equivalents incl. restore
+- Directory lifecycle
+- Auth & account events (login/logout/password changes)
+- Sharing, tagging, policy, playlist, streaming events
+- Admin actions — job requeues, incident resolution, document text retries (`DocumentTextRetried`, appended last so earlier codes keep their numbers)
+
+Codes map to an `EntityType` + `OperationType`, so the calendar/feed views can bucket by service area.
+
+## Reading the Trail
+
+- `GET /api/v1/activity/*` (`GetActivity`, `GetActivitySummary`) powers the dashboard's audit views including calendar visualization
+- Per-user activity: `Features/Users/GetUserActivity`
+- Retention/cleanup of the log is handled by a dedicated cleanup routine
+
+<Aside type="note">
+  <code>AuditLog</code> deliberately does <em>not</em> implement <code>IBase</code> — it uses <code>Timestamp</code> instead of the standard audit columns, so audit rows are never themselves soft-deleted or "updated".
+</Aside>
+
+---
+
+<Aside type="note">**Verified against:** migration listing (`AuditTriggers`, trigger SQL), `Enumerators/AuditEventCode.cs` + `EntityType`/`OperationType`, `Data.Common/Audit/` interceptor, `Features/Activity/` endpoints.</Aside>
