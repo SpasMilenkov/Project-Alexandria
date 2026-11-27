@@ -25,8 +25,12 @@ public class ShellThemeAndAbortTests
         Theme.Active.Id.Should().NotBe(before);
         saved.Should().ContainSingle().Which.Should().Be(Theme.Active.Id);
 
-        // cycling back returns to the original palette
-        harness.Shell.HandleGlobalKey(new ConsoleKeyInfo('t', ConsoleKey.T, false, false, false));
+        // a full cycle through every theme returns to the original palette
+        for (var press = 1; press < Themes.All.Count; press++)
+        {
+            harness.Shell.HandleGlobalKey(new ConsoleKeyInfo('t', ConsoleKey.T, false, false, false));
+        }
+
         Theme.Active.Id.Should().Be(before);
     }
 

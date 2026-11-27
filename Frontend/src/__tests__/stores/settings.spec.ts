@@ -11,8 +11,8 @@ describe("useSettingsStore", () => {
 
   it("starts with default values", () => {
     const store = useSettingsStore();
-    expect(store.accentColor).toBe("amber");
-    expect(store.backgroundColor).toBe("parchment");
+    expect(store.accentColor).toBe("emerald");
+    expect(store.backgroundColor).toBe("cream");
     expect(store.backgroundImage).toBeNull();
     expect(store.backgroundImageKey).toBeNull();
     expect(store.backgroundImageOpacity).toBe(0.35);
@@ -33,8 +33,8 @@ describe("useSettingsStore", () => {
   it("getSettings returns all settings as a flat object", () => {
     const store = useSettingsStore();
     const settings = store.getSettings;
-    expect(settings.accentColor).toBe("amber");
-    expect(settings.backgroundColor).toBe("parchment");
+    expect(settings.accentColor).toBe("emerald");
+    expect(settings.backgroundColor).toBe("cream");
     expect(settings.gridIconSize).toBe(48);
   });
 
@@ -56,7 +56,7 @@ describe("useSettingsStore", () => {
     it("setBackgroundColor ignores invalid values", () => {
       const store = useSettingsStore();
       store.setBackgroundColor("hot-pink");
-      expect(store.backgroundColor).toBe("parchment");
+      expect(store.backgroundColor).toBe("cream");
     });
   });
 
@@ -212,7 +212,7 @@ describe("useSettingsStore", () => {
       expect(payload.thumbnailsEnabled).toBe(false);
       expect(payload.fontFamily).toBe("serif");
       expect(payload.cornerRadius).toBe(1);
-      expect(payload.accentColor).toBe("amber");
+      expect(payload.accentColor).toBe("emerald");
     });
   });
 
@@ -395,7 +395,7 @@ describe("useSettingsStore", () => {
     it("returns the matching preset", () => {
       const store = useSettingsStore();
       const preset = store.getCurrentBackgroundPreset;
-      expect(preset.name).toBe("parchment");
+      expect(preset.name).toBe("cream");
     });
 
     it("returns the first preset for unknown background", () => {
@@ -494,7 +494,7 @@ describe("useSettingsStore", () => {
     it("ignores undefined fields", () => {
       const store = useSettingsStore();
       store.updateSettings({});
-      expect(store.accentColor).toBe("amber");
+      expect(store.accentColor).toBe("emerald");
     });
   });
 
@@ -512,8 +512,8 @@ describe("useSettingsStore", () => {
       store.setSurfaceOpacity(90);
       store.setThumbnailsEnabled(false);
       store.resetSettings();
-      expect(store.accentColor).toBe("amber");
-      expect(store.backgroundColor).toBe("parchment");
+      expect(store.accentColor).toBe("emerald");
+      expect(store.backgroundColor).toBe("cream");
       expect(store.gridIconSize).toBe(48);
       expect(store.skipDeleteConfirmation).toBe(false);
       expect(store.frostEnabled).toBe(true);
@@ -550,7 +550,7 @@ describe("useSettingsStore", () => {
       store.setFontFamily("mono");
       store.setCornerRadius(1);
       store.resetAppearanceSettings();
-      expect(store.accentColor).toBe("amber");
+      expect(store.accentColor).toBe("emerald");
       expect(store.gridIconSize).toBe(48);
       expect(store.frostEnabled).toBe(true);
       expect(store.frostStrength).toBe(8);

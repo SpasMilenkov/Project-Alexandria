@@ -203,9 +203,9 @@ export interface UserSettings {
   allowAutomaticMetadataOverwrite: boolean;
   autoPlaylistMinTracks: number;
 }
-const DEFAULT_ACCENT_COLOR = "amber";
+const DEFAULT_ACCENT_COLOR = "emerald";
 const DEFAULT_TAB_ICON_COLOR: TabIconColor = TAB_ICON_MATCH_ACCENT;
-const DEFAULT_BACKGROUND = "parchment";
+const DEFAULT_BACKGROUND = "cream";
 const DEFAULT_BACKGROUND_IMAGE = null;
 const DEFAULT_BACKGROUND_IMAGE_OPACITY = 0.35;
 const DEFAULT_FROST_ENABLED = true;
