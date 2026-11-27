@@ -4,11 +4,11 @@ namespace Alexandria.Common.Settings.Values;
 
 public class AppearanceSettingsValue
 {
-    public string AccentColor { get; set; } = "amber";
+    public string AccentColor { get; set; } = "emerald";
 
     // "accent" follows AccentColor; otherwise one of the accent palette names.
     public string TabIconColor { get; set; } = "accent";
-    public string BackgroundColor { get; set; } = "parchment";
+    public string BackgroundColor { get; set; } = "cream";
     public string? BackgroundImageKey { get; set; } = null;
     public DateTime? BackgroundImageUpdatedAt { get; set; } = null;
 
