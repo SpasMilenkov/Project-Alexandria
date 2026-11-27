@@ -2,7 +2,7 @@
   <UModal
     :open="open"
     title="New account"
-    description="They'll receive an invitation email once the account is created."
+    description="Set a temporary password and share it with them. They choose their own the first time they sign in."
     :close="{ onClick: () => emit('close') }"
     :ui="formModalUi"
     @update:open="onOpenChange"
@@ -42,7 +42,7 @@
               <UFormField
                 label="Email address"
                 name="email"
-                description="Where the invitation is sent."
+                description="Saved on their profile. Alexandria doesn't send email."
                 required
               >
                 <UInput
@@ -60,7 +60,7 @@
 
           <fieldset class="min-w-0 space-y-4">
             <legend class="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
-              Password
+              Temporary password
             </legend>
 
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">

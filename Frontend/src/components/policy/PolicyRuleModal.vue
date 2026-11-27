@@ -56,7 +56,16 @@
             again to turn it back on; the rule is kept.
           </p>
 
-          <UFormField v-else :error="errors.actionType">
+          <p
+            v-else-if="isEditing && form.actionType === PolicyActionType.Backup"
+            class="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400"
+          >
+            <UIcon name="i-lucide-circle-alert" class="mt-px h-3.5 w-3.5 shrink-0" />
+            Backups aren't available yet, so this rule does nothing for now. The rule is kept and
+            will start working once backups ship.
+          </p>
+
+          <UFormField v-else-if="!isEditing" :error="errors.actionType">
             <div role="radiogroup" aria-label="Action" class="grid gap-2" :class="actionGridClass">
               <button
                 v-for="action in actionOptions"
@@ -64,8 +73,9 @@
                 type="button"
                 role="radio"
                 :aria-checked="form.actionType === action.value"
+                :disabled="action.comingSoon"
                 class="relative flex items-center gap-3 rounded-xl border p-3 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary lg:flex-col lg:items-start lg:p-4"
-                :class="actionRowClass(action.value)"
+                :class="actionRowClass(action)"
                 @click="selectAction(action.value)"
               >
                 <span
@@ -84,8 +94,16 @@
                   </span>
                 </span>
 
+                <UBadge
+                  v-if="action.comingSoon"
+                  label="Coming soon"
+                  color="neutral"
+                  variant="subtle"
+                  size="sm"
+                  class="shrink-0 lg:absolute lg:top-4 lg:right-4"
+                />
                 <UIcon
-                  v-if="form.actionType === action.value"
+                  v-else-if="form.actionType === action.value"
                   name="i-lucide-circle-check"
                   class="h-5 w-5 shrink-0 text-primary lg:absolute lg:top-4 lg:right-4"
                 />
@@ -396,6 +414,7 @@ interface ActionOption {
   description: string;
   icon: string;
   tileClass: string;
+  comingSoon?: boolean;
 }
 
 const allActionOptions: ActionOption[] = [
@@ -419,6 +438,8 @@ const allActionOptions: ActionOption[] = [
     description: "Copy files to another location on a schedule",
     icon: "i-lucide-cloud-upload",
     tileClass: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400",
+    // Shown so the planned action is visible, but the backend has no backup job yet
+    comingSoon: true,
   },
 ];
 
@@ -597,8 +618,12 @@ const ladderSummary = computed(() => {
   return `${parts.join(" and ")} per file`;
 });
 
-const actionRowClass = (value: PolicyActionType) => {
-  if (form.actionType === value) return "border-primary bg-primary/5 ring-1 ring-primary";
+const actionRowClass = (action: ActionOption) => {
+  if (action.comingSoon) {
+    return "cursor-not-allowed border-gray-200/70 opacity-60 dark:border-gray-700/70";
+  }
+
+  if (form.actionType === action.value) return "border-primary bg-primary/5 ring-1 ring-primary";
   return "border-gray-200/70 hover:border-gray-300 hover:bg-gray-500/5 dark:border-gray-700/70 dark:hover:border-gray-600";
 };
 
