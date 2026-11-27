@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Alexandria.Common;
 using Alexandria.Common.Config;
-using Alexandria.Common.Exceptions;
 using Alexandria.Common.Exceptions.Policies;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
@@ -50,6 +49,10 @@ public sealed partial class DirectoryPolicyService(
         {
             var entity = request.ToEntity(ownerId);
             await unitOfWork.DirectoryPolicies.AddAsync(entity, ct);
+
+            // A commit nested in the caller's transaction doesn't save, and rules added next
+            // look the policy up in the database
+            await unitOfWork.SaveChangesAsync(ct);
             await unitOfWork.CommitAsync(ct);
 
             LogPolicyCreated(logger, entity.Id, request.DirectoryId);

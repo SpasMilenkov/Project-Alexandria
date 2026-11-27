@@ -94,12 +94,15 @@ public class DirectoryPolicyBackfillTriggerTests
             Id = PolicyId,
             DirectoryId = DirectoryId,
             CreatedAt = CreatedAt,
-            Rules = [new PolicyRule
-            {
-                Id = RuleId,
-                ActionType = PolicyActionType.AutoTag,
-                Parameters = JsonDocument.Parse("{}")
-            }]
+            Rules =
+            [
+                new PolicyRule
+                {
+                    Id = RuleId,
+                    ActionType = PolicyActionType.AutoTag,
+                    Parameters = JsonDocument.Parse("{}")
+                }
+            ]
         });
 
         await CreateSut(audioAnalysis: false).UpdatePolicyAsync(
@@ -118,6 +121,20 @@ public class DirectoryPolicyBackfillTriggerTests
         await NoBackfillEnqueued();
     }
 
+    [Fact]
+    public async Task CreatePolicyAsync_saves_before_committing_so_an_outer_transaction_can_add_rules()
+    {
+        await CreateSut().CreatePolicyAsync(new CreateDirectoryPolicyRequest { DirectoryId = DirectoryId },
+            OwnerId, TestContext.Current.CancellationToken);
+
+        Received.InOrder(() =>
+        {
+            _policies.AddAsync(Arg.Any<DirectoryPolicy>(), Arg.Any<CancellationToken>());
+            _unitOfWork.SaveChangesAsync(Arg.Any<CancellationToken>());
+            _unitOfWork.CommitAsync(Arg.Any<CancellationToken>());
+        });
+    }
+
     [Theory]
     [InlineData(PolicyActionType.AutoTag)]
     [InlineData(PolicyActionType.Transcode)]
@@ -128,12 +145,15 @@ public class DirectoryPolicyBackfillTriggerTests
             Id = PolicyId,
             DirectoryId = DirectoryId,
             CreatedAt = CreatedAt,
-            Rules = [new PolicyRule
-            {
-                Id = RuleId,
-                ActionType = actionType,
-                Parameters = JsonDocument.Parse("{}")
-            }]
+            Rules =
+            [
+                new PolicyRule
+                {
+                    Id = RuleId,
+                    ActionType = actionType,
+                    Parameters = JsonDocument.Parse("{}")
+                }
+            ]
         });
 
         await CreateSut().UpdatePolicyAsync(PolicyId, true, OwnerId, TestContext.Current.CancellationToken);

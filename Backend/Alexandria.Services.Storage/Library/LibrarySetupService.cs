@@ -3,9 +3,9 @@ using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions;
 using Alexandria.Common.Library;
 using Alexandria.Common.Services;
-using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Library;
+using Alexandria.Dto.Policies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Directory = Alexandria.Data.Models.Directory;
@@ -14,6 +14,7 @@ namespace Alexandria.Services.Storage.Library;
 
 public sealed partial class LibrarySetupService(
     IUnitOfWork unitOfWork,
+    IDirectoryPolicyService policyService,
     ILogger<LibrarySetupService> logger,
     IOptions<ProcessingCapabilities> capabilities)
     : ILibrarySetupService
@@ -90,7 +91,7 @@ public sealed partial class LibrarySetupService(
             unitOfWork.Directories.Update(existing);
         }
 
-        var rules = LibraryPolicyRules.Build(preset, choice, _capabilities, userId);
+        var rules = LibraryPolicyRules.Build(preset, choice, _capabilities);
         if (rules.Count == 0) return;
 
         if (existing is not null && await unitOfWork.DirectoryPolicies.ExistsForDirectoryAsync(directoryId, ct))
@@ -99,20 +100,15 @@ public sealed partial class LibrarySetupService(
             return;
         }
 
-        var policy = new DirectoryPolicy
+        // The policy service gives these rules the same backfill as rules added in the editor,
+        // so a reused folder's existing files are processed too. It joins this transaction.
+        var policy = await policyService.CreatePolicyAsync(new CreateDirectoryPolicyRequest
         {
-            Id = Guid.NewGuid(),
             DirectoryId = directoryId,
             InheritedByChildren = true,
-            UpdatedBy = userId,
-        };
-
-        await unitOfWork.DirectoryPolicies.AddAsync(policy, ct);
+        }, userId, ct);
 
         foreach (var rule in rules)
-        {
-            rule.PolicyId = policy.Id;
-            await unitOfWork.PolicyRules.AddAsync(rule, ct);
-        }
+            await policyService.AddRuleAsync(policy.Id, rule, userId, ct);
     }
 }
