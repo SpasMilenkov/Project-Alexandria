@@ -385,7 +385,16 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                     MimeType = src.Version.MimeType,
                     CreatedAt = now,
                     CreatedBy = userId,
-                    ContentObjectId = src.Version.ContentObjectId
+                    ContentObjectId = src.Version.ContentObjectId,
+                    // The copy shares the source's stored bytes, so it needs the same key material
+                    // to decrypt them
+                    IsEncrypted = src.Version.IsEncrypted,
+                    EncryptionIv = src.Version.EncryptionIv,
+                    EncryptionSalt = src.Version.EncryptionSalt,
+                    IntegrityTag = src.Version.IntegrityTag,
+                    EncryptionHint = src.Version.EncryptionHint,
+                    KdfVersion = src.Version.KdfVersion,
+                    IterationCount = src.Version.IterationCount,
                 });
 
                 newFileTags.AddRange(src.TagAssignments.Select(ta => new FileTag
