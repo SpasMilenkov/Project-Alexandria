@@ -29,6 +29,7 @@ try
     );
     builder.Services.AddHostedService<TranspilationWorker>();
     builder.Services.AddHostedService<TranspilationPollingWorker>();
+    builder.Services.AddHostedService<TranscodeBackfillWorker>();
 
     builder.Services
         .AddWorkerDatabase(builder.Configuration)

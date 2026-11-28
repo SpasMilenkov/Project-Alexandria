@@ -46,9 +46,9 @@
     {
       "user": "media_transpilation_worker",
       "vhost": "${RABBITMQ_VHOST}",
-      "configure": "^(content-exchange|transpilation-queue)$",
-      "write": "^(content-exchange|transpilation-queue)$",
-      "read": "^(content-exchange|transpilation-queue)$"
+      "configure": "^(content-exchange|transpilation-queue|transcode-backfill-queue)$",
+      "write": "^(content-exchange|transpilation-queue|transcode-backfill-queue)$",
+      "read": "^(content-exchange|transpilation-queue|transcode-backfill-queue)$"
     },
     {
       "user": "lyrics_worker_user",
@@ -106,6 +106,7 @@
     { "name": "document-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
     { "name": "media-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
     { "name": "transpilation-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "transcode-backfill-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
     { "name": "lyrics-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
     { "name": "classify-effnet-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
     { "name": "classify-maest-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
@@ -119,6 +120,7 @@
     { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "media-queue", "destination_type": "queue", "routing_key": "media.#", "arguments": {} },
     { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "media-queue", "destination_type": "queue", "routing_key": "image.#", "arguments": {} },
     { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "transpilation-queue", "destination_type": "queue", "routing_key": "transpilation.#", "arguments": {} },
+    { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "transcode-backfill-queue", "destination_type": "queue", "routing_key": "policy.transcode-backfill.#", "arguments": {} },
     { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "lyrics-queue", "destination_type": "queue", "routing_key": "lyrics.#", "arguments": {} },
     { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "classify-effnet-queue", "destination_type": "queue", "routing_key": "media-metadata.classify.audio.effnet", "arguments": {} },
     { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "classify-maest-queue", "destination_type": "queue", "routing_key": "media-metadata.classify.audio.maest", "arguments": {} },

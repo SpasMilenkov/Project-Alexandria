@@ -6,6 +6,7 @@ using Alexandria.Infrastructure.Messaging;
 using Alexandria.Infrastructure.Workers;
 using Alexandria.Services.Monitoring;
 using Alexandria.Services.Streaming;
+using Alexandria.Services.Streaming.Backfill;
 using Alexandria.Services.Streaming.VideoEncoding;
 using Alexandria.Workers.MediaTranspilation.Config;
 using Alexandria.Workers.MediaTranspilation.Handlers;
@@ -19,6 +20,7 @@ public static class WorkerExtensions
         IConfiguration configuration)
     {
         services.AddCoreWorkerServices();
+        services.Configure<ProcessingCapabilities>(configuration.GetSection(ProcessingCapabilities.SectionName));
 
         services.Configure<TranspilationConfig>(
             configuration.GetSection("Transpilation"));
@@ -30,6 +32,7 @@ public static class WorkerExtensions
         services.AddHostedService<VideoEncoderStartupCheck>();
 
         services.AddScoped<ITranspilationJobService, TranspilationJobService>();
+        services.AddScoped<ITranscodeBackfillService, TranscodeBackfillService>();
         services.AddScoped<IStreamingRepresentationService, StreamingRepresentationService>();
         services.AddScoped<IVideoTranspilationService, VideoTranspilationService>();
         services.AddScoped<IAudioTranspilationService, AudioTranspilationService>();
