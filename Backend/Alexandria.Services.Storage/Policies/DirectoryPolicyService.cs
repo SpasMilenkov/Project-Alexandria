@@ -6,6 +6,7 @@ using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Enrichment;
+using Alexandria.Dto.Files.Streaming;
 using Alexandria.Dto.Policies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -24,6 +25,7 @@ public sealed partial class DirectoryPolicyService(
     private static readonly JsonSerializerOptions BackfillJsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly bool _autoTaggingEnabled = capabilities.Value.AutoTaggingActive;
+    private readonly bool _streamingEnabled = capabilities.Value.AdaptiveStreaming;
 
     public async Task<DirectoryPolicyDto?> GetPolicyAsync(Guid directoryId, Guid ownerId,
         CancellationToken ct = default)
@@ -76,6 +78,8 @@ public sealed partial class DirectoryPolicyService(
         var policy = await unitOfWork.DirectoryPolicies.GetByIdAsync(policyId, ct)
                      ?? throw new DirectoryPolicyNotFoundException(policyId);
 
+        var stopsSharing = policy.InheritedByChildren && !inheritedByChildren;
+
         policy.InheritedByChildren = inheritedByChildren;
         policy.UpdatedBy = updatedBy;
 
@@ -86,9 +90,10 @@ public sealed partial class DirectoryPolicyService(
 
             var cutoff = new DateTimeOffset(policy.UpdatedAt ?? DateTime.UtcNow);
 
-            foreach (var rule in policy.Rules.Where(r =>
-                         r.DeletedAt == null && r.ActionType == PolicyActionType.AutoTag))
-                await EnqueueBackfillAsync(new EnrichmentBackfillRequest(policyId, rule.Id, cutoff), ct);
+            foreach (var rule in policy.Rules.Where(r => r.DeletedAt == null))
+                await EnqueueBackfillAsync(rule.ActionType, policyId, rule.Id, cutoff, ct);
+
+            if (stopsSharing) await EnqueueFallbackBackfillAsync(policy.DirectoryId, ct);
         }, ct);
 
         LogPolicyUpdated(logger, policyId);
@@ -109,6 +114,8 @@ public sealed partial class DirectoryPolicyService(
                 unitOfWork.PolicyRules.Remove(rule);
 
             unitOfWork.DirectoryPolicies.Remove(policy);
+            await EnqueueFallbackBackfillAsync(policy.DirectoryId, ct);
+
             await unitOfWork.CommitAsync(ct);
 
             LogPolicyDeleted(logger, policyId);
@@ -138,9 +145,8 @@ public sealed partial class DirectoryPolicyService(
             await unitOfWork.PolicyRules.AddAsync(entity, ct);
             await unitOfWork.SaveChangesAsync(ct);
 
-            if (entity.ActionType == PolicyActionType.AutoTag)
-                await EnqueueBackfillAsync(new EnrichmentBackfillRequest(
-                    policyId, entity.Id, new DateTimeOffset(entity.CreatedAt)), ct);
+            await EnqueueBackfillAsync(entity.ActionType, policyId, entity.Id,
+                new DateTimeOffset(entity.CreatedAt), ct);
         }, ct);
 
         LogRuleAdded(logger, entity.Id, policyId);
@@ -169,9 +175,8 @@ public sealed partial class DirectoryPolicyService(
             unitOfWork.PolicyRules.Update(rule);
             await unitOfWork.SaveChangesAsync(ct);
 
-            if (rule.ActionType == PolicyActionType.AutoTag)
-                await EnqueueBackfillAsync(new EnrichmentBackfillRequest(
-                    rule.PolicyId, rule.Id, new DateTimeOffset(rule.UpdatedAt ?? DateTime.UtcNow)), ct);
+            await EnqueueBackfillAsync(rule.ActionType, rule.PolicyId, rule.Id,
+                new DateTimeOffset(rule.UpdatedAt ?? DateTime.UtcNow), ct);
         }, ct);
 
         LogRuleUpdated(logger, ruleId);
@@ -184,17 +189,65 @@ public sealed partial class DirectoryPolicyService(
         var rule = await unitOfWork.PolicyRules.GetByIdAsync(ruleId, ct)
                    ?? throw new PolicyRuleNotFoundException(ruleId);
 
-        unitOfWork.PolicyRules.Remove(rule);
-        await unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.InTransactionAsync(async () =>
+        {
+            unitOfWork.PolicyRules.Remove(rule);
+            await unitOfWork.SaveChangesAsync(ct);
+
+            if (await unitOfWork.PolicyRules.ExistsAsync(r => r.PolicyId == rule.PolicyId, ct)) return;
+
+            var policy = await unitOfWork.DirectoryPolicies.GetByIdAsync(rule.PolicyId, ct);
+            if (policy is not null) await EnqueueFallbackBackfillAsync(policy.DirectoryId, ct);
+        }, ct);
 
         LogRuleDeleted(logger, ruleId);
     }
 
     /// <summary>
-    /// Enqueued in the same transaction as the rule or policy edit, so a saved edit always gets
-    /// its backfill and a broker outage only delays it.
+    /// A folder whose policy is deleted or loses its last rule falls back to the nearest inherited
+    /// policy above it, and so do its subfolders when its policy stops being inherited. Those files
+    /// predate that policy's rules, so each of them sweeps again; the sweeps skip files that are
+    /// already handled, so the rest of that policy's scope is unchanged.
     /// </summary>
-    private async Task EnqueueBackfillAsync(EnrichmentBackfillRequest request, CancellationToken ct)
+    private async Task EnqueueFallbackBackfillAsync(Guid directoryId, CancellationToken ct)
+    {
+        var fallback = await unitOfWork.DirectoryPolicies.ResolveInheritedPolicyAboveAsync(directoryId, ct);
+        if (fallback is null) return;
+
+        var cutoff = DateTimeOffset.UtcNow;
+
+        foreach (var rule in fallback.Rules)
+            await EnqueueBackfillAsync(rule.ActionType, fallback.Id, rule.Id, cutoff, ct);
+
+        LogFallbackBackfillQueued(logger, fallback.Id, directoryId);
+    }
+
+    /// <summary>
+    /// Every rule change sweeps the files that predate it, so a rule covers what is already in its
+    /// folders and not only later uploads. Enqueued in the same transaction as the edit, so a saved
+    /// edit always gets its backfill and a broker outage only delays it. Backup has no job to run.
+    /// </summary>
+    private async Task EnqueueBackfillAsync(PolicyActionType actionType, Guid policyId, Guid ruleId,
+        DateTimeOffset cutoff, CancellationToken ct)
+    {
+        if (actionType == PolicyActionType.AutoTag)
+        {
+            await EnqueueEnrichmentBackfillAsync(new EnrichmentBackfillRequest(policyId, ruleId, cutoff), ct);
+            return;
+        }
+
+        if (actionType == PolicyActionType.Transcode)
+        {
+            await EnqueueTranscodeBackfillAsync(new TranscodeBackfillRequest
+            {
+                PolicyId = policyId,
+                RuleId = ruleId,
+                Cutoff = cutoff,
+            }, ct);
+        }
+    }
+
+    private async Task EnqueueEnrichmentBackfillAsync(EnrichmentBackfillRequest request, CancellationToken ct)
     {
         if (!_autoTaggingEnabled)
         {
@@ -204,6 +257,20 @@ public sealed partial class DirectoryPolicyService(
 
         await outbox.EnqueueAsync(
             EnrichmentBackfill.BackfillRoutingKey,
+            JsonSerializer.SerializeToUtf8Bytes(request, BackfillJsonOptions),
+            ct);
+    }
+
+    private async Task EnqueueTranscodeBackfillAsync(TranscodeBackfillRequest request, CancellationToken ct)
+    {
+        if (!_streamingEnabled)
+        {
+            LogTranscodeBackfillSkippedDisabled(logger, request.PolicyId);
+            return;
+        }
+
+        await outbox.EnqueueAsync(
+            TranscodeBackfill.BackfillRoutingKey,
             JsonSerializer.SerializeToUtf8Bytes(request, BackfillJsonOptions),
             ct);
     }
