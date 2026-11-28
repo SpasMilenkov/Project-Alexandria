@@ -302,6 +302,9 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
                         // Job creation refuses a version without live content, so it never enters the sweep
                         && f.CurrentVersion.ContentObject.OrphanedAt == null
                         && f.CurrentVersion.ContentObject.DeletedAt == null
+                        // Uploads leave client-encrypted files out of dispatch too: the encoder
+                        // would only see ciphertext
+                        && !f.CurrentVersion.IsEncrypted
                         && f.DirectoryId.HasValue
                         && directoryIds.Contains(f.DirectoryId.Value)
                         && (EF.Functions.ILike(f.MimeType, "video/%") || EF.Functions.ILike(f.MimeType, "audio/%")))

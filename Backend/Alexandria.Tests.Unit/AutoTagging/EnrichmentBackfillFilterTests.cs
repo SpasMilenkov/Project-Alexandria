@@ -1,4 +1,5 @@
 using Alexandria.Common.Policies;
+using Alexandria.Data.Models;
 using AwesomeAssertions;
 using File = Alexandria.Data.Models.File;
 
@@ -54,6 +55,23 @@ public class EnrichmentBackfillFilterTests
         var filter = EnrichmentBackfill.BuildScopeFilter([RootDir], Cutoff).Compile();
 
         filter(FileIn(RootDir, Cutoff.AddHours(-1), deleted: true)).Should().BeFalse();
+    }
+
+    [Fact]
+    public void BuildScopeFilter_excludes_client_encrypted_files()
+    {
+        var filter = EnrichmentBackfill.BuildScopeFilter([RootDir], Cutoff).Compile();
+
+        var encrypted = FileIn(RootDir, Cutoff.AddHours(-1));
+        encrypted.CurrentVersion = new FileVersion
+        {
+            Size = 1,
+            VersionNumber = 1,
+            MimeType = "audio/mpeg",
+            IsEncrypted = true,
+        };
+
+        filter(encrypted).Should().BeFalse();
     }
 
     [Fact]

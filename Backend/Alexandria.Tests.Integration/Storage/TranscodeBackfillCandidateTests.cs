@@ -110,6 +110,7 @@ public class TranscodeBackfillCandidateTests(DatabaseFixture fixture) : IAsyncLi
         await SeedFileAsync(music.Id, createdAt: _cutoff.AddHours(1));
         await SeedFileAsync(other.Id);
         await SeedFileWithoutVersionAsync(music.Id);
+        await SeedFileAsync(music.Id, encrypted: true);
 
         var candidates = await GetCandidatesAsync([music.Id]);
 
@@ -154,7 +155,8 @@ public class TranscodeBackfillCandidateTests(DatabaseFixture fixture) : IAsyncLi
         Guid directoryId,
         string mimeType = "audio/mpeg",
         DateTime? createdAt = null,
-        bool deleted = false)
+        bool deleted = false,
+        bool encrypted = false)
     {
         DateTime? deletedAt = null;
         if (deleted) deletedAt = DateTime.UtcNow;
@@ -162,11 +164,21 @@ public class TranscodeBackfillCandidateTests(DatabaseFixture fixture) : IAsyncLi
         await using var db = fixture.CreateDbContext();
 
         var content = new ContentObjectBuilder().Build();
-        var version = new FileVersionBuilder()
+        var versionBuilder = new FileVersionBuilder()
             .WithContentObject(content)
             .WithCreatedBy(_userId)
-            .WithMimeType(mimeType)
-            .Build();
+            .WithMimeType(mimeType);
+
+        if (encrypted)
+        {
+            versionBuilder
+                .WithIsEncrypted(true)
+                .WithEncryptionIv(new byte[12])
+                .WithEncryptionSalt(new byte[16])
+                .WithIntegrityTag(new byte[16]);
+        }
+
+        var version = versionBuilder.Build();
         var file = new FileBuilder()
             .WithOwner(_userId)
             .WithDirectory(directoryId)
