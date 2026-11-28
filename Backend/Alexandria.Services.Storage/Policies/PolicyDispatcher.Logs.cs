@@ -19,6 +19,10 @@ public sealed partial class PolicyDispatcher
         Message = "Skipped backup rule {RuleId} for file {FileId}: backups are not available yet.")]
     private static partial void LogBackupRuleSkipped(ILogger logger, Guid ruleId, Guid fileId);
 
+    [LoggerMessage(Level = LogLevel.Debug,
+        Message = "Skipped transcode rule {RuleId} for file {FileId}: '{MimeType}' is not audio or video.")]
+    private static partial void LogTranscodeRuleSkipped(ILogger logger, Guid ruleId, Guid fileId, string mimeType);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipped rule {RuleId} for file {FileId}: {Reason}")]
     private static partial void LogRuleDispatchSkipped(ILogger logger, Guid ruleId, Guid fileId, string reason);
 }
