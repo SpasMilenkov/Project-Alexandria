@@ -16,7 +16,9 @@ public static class EnrichmentBackfill
     /// <summary>
     /// Live files sitting directly in one of
     /// <paramref name="directoryIds"/>, created strictly before
-    /// <paramref name="predatingCutoff"/> (the rule or scope change timestamp).
+    /// <paramref name="predatingCutoff"/> (the rule or scope change timestamp). A client-encrypted
+    /// current version is left out, as uploads leave it out of dispatch: the analyser would only
+    /// see ciphertext.
     /// </summary>
     public static Expression<Func<File, bool>> BuildScopeFilter(
         IReadOnlyCollection<Guid> directoryIds,
@@ -25,7 +27,8 @@ public static class EnrichmentBackfill
         return f => f.DeletedAt == null
                     && f.CreatedAt < predatingCutoff
                     && f.DirectoryId.HasValue
-                    && directoryIds.Contains(f.DirectoryId.Value);
+                    && directoryIds.Contains(f.DirectoryId.Value)
+                    && (f.CurrentVersion == null || !f.CurrentVersion.IsEncrypted);
     }
 
     /// <summary>

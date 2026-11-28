@@ -584,7 +584,14 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                     f.CurrentVersion.ContentObjectId,
                     f.CurrentVersion.Size,
                     f.CurrentVersion.MimeType,
-                    f.CurrentVersion.ContentHash
+                    f.CurrentVersion.ContentHash,
+                    f.CurrentVersion.IsEncrypted,
+                    f.CurrentVersion.EncryptionIv,
+                    f.CurrentVersion.EncryptionSalt,
+                    f.CurrentVersion.IntegrityTag,
+                    f.CurrentVersion.EncryptionHint,
+                    f.CurrentVersion.KdfVersion,
+                    f.CurrentVersion.IterationCount
                 }
             })
             .ToListAsync(ct);
@@ -634,7 +641,16 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                 MimeType = f.Version.MimeType,
                 VersionNumber = 1,
                 CreatedAt = now,
-                CreatedBy = userId
+                CreatedBy = userId,
+                // The copy shares the source's stored bytes, so it needs the same key material
+                // to decrypt them
+                IsEncrypted = f.Version.IsEncrypted,
+                EncryptionIv = f.Version.EncryptionIv,
+                EncryptionSalt = f.Version.EncryptionSalt,
+                IntegrityTag = f.Version.IntegrityTag,
+                EncryptionHint = f.Version.EncryptionHint,
+                KdfVersion = f.Version.KdfVersion,
+                IterationCount = f.Version.IterationCount
             });
         }
 

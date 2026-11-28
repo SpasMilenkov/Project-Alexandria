@@ -286,4 +286,50 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
                 j.FileVersion.File.CurrentVersionId))
             .ToListAsync(ct);
     }
+
+    public async Task<IReadOnlyList<TranscodeBackfillCandidate>> GetTranscodeBackfillCandidatesAsync(
+        IReadOnlyCollection<Guid> directoryIds, DateTime predatingCutoff, CancellationToken ct = default)
+    {
+        if (directoryIds.Count == 0) return [];
+
+        // Every video and audio alias starts with one of these prefixes, so this coarse cut only
+        // keeps documents and images out of the sweep; the exact group match stays in the service.
+        return await context.Files
+            .AsNoTracking()
+            .Where(f => f.DeletedAt == null
+                        && f.CreatedAt < predatingCutoff
+                        && f.CurrentVersionId != null
+                        // Job creation refuses a version without live content, so it never enters the sweep
+                        && f.CurrentVersion.ContentObject.OrphanedAt == null
+                        && f.CurrentVersion.ContentObject.DeletedAt == null
+                        // Uploads leave client-encrypted files out of dispatch too: the encoder
+                        // would only see ciphertext
+                        && !f.CurrentVersion.IsEncrypted
+                        && f.DirectoryId.HasValue
+                        && directoryIds.Contains(f.DirectoryId.Value)
+                        && (EF.Functions.ILike(f.MimeType, "video/%") || EF.Functions.ILike(f.MimeType, "audio/%")))
+            .Select(f => new TranscodeBackfillCandidate
+            {
+                FileId = f.Id,
+                VersionId = f.CurrentVersionId!.Value,
+                OwnerId = f.OwnerId,
+                MimeType = f.MimeType,
+                Transcode = _jobs
+                    .Where(j => j.VersionId == f.CurrentVersionId
+                                && j.DeletedAt == null
+                                && j.Job.DeletedAt == null)
+                    .OrderByDescending(j => j.CreatedAt)
+                    .Select(j => new ExistingTranscode
+                    {
+                        TranspilationId = j.Id,
+                        UserId = j.UserId,
+                        IsVideo = j.IsVideo,
+                        Status = j.Job.Status,
+                        AudioRungs = j.AudioRungs,
+                        VideoRungs = j.VideoRungs,
+                    })
+                    .FirstOrDefault(),
+            })
+            .ToListAsync(ct);
+    }
 }

@@ -225,4 +225,31 @@ public class EnrichmentBackfillServiceTests
         await _directories.Received(inherited ? 1 : 0)
             .GetAllSubDirectoriesAsync(RootDir, Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task BackfillRuleAsync_inheritedPolicy_leavesSubfoldersWithTheirOwnRulesOut()
+    {
+        GivenPolicy(inherited: true);
+
+        var overridden = new Directory { Id = Guid.NewGuid(), Name = "overridden", ParentId = RootDir };
+
+        _directories.GetAllSubDirectoriesAsync(RootDir, Arg.Any<CancellationToken>())
+            .Returns([new Directory { Id = ChildDir, Name = "child", ParentId = RootDir }, overridden]);
+        _policies.GetWithRulesByDirectoryIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(
+            [
+                new DirectoryPolicy
+                {
+                    DirectoryId = overridden.Id,
+                    InheritedByChildren = true,
+                    Rules = [new PolicyRule { Id = Guid.NewGuid(), ActionType = PolicyActionType.Transcode }],
+                },
+            ]);
+
+        await CreateSut().BackfillRuleAsync(Request(RuleCreatedAt), TestContext.Current.CancellationToken);
+
+        await _batchFiles.Received(1).GetEnrichmentBackfillCandidatesAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2 && ids.Contains(RootDir) && ids.Contains(ChildDir)),
+            RuleCreatedAt, Arg.Any<CancellationToken>());
+    }
 }

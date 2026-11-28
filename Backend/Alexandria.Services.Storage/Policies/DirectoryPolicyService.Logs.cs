@@ -28,6 +28,13 @@ public sealed partial class DirectoryPolicyService
     [LoggerMessage(Level = LogLevel.Information, Message = "Rule {RuleId} deleted.")]
     private static partial void LogRuleDeleted(ILogger logger, Guid ruleId);
 
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "Queued backfill of policy {PolicyId}, which files under directory {DirectoryId} now fall back to.")]
+    private static partial void LogFallbackBackfillQueued(ILogger logger, Guid policyId, Guid directoryId);
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Skipping backfill for policy {PolicyId}: autotagging is disabled.")]
     private static partial void LogBackfillSkippedDisabled(ILogger logger, Guid policyId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Skipping transcode backfill for policy {PolicyId}: adaptive streaming is disabled.")]
+    private static partial void LogTranscodeBackfillSkippedDisabled(ILogger logger, Guid policyId);
 }

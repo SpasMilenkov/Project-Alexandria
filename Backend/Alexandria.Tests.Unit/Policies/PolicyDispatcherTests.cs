@@ -75,6 +75,38 @@ public class PolicyDispatcherTests
     }
 
     [Fact]
+    public async Task Any_file_transcode_rule_skips_non_media_and_later_rules_still_run()
+    {
+        GivenRules(
+            Rule(PolicyActionType.Transcode, """{ "audioRungs": [], "videoRungs": [], "generateThumbnail": true }""",
+                priority: 0),
+            Rule(PolicyActionType.AutoTag, """{ "source": 1 }""", priority: 1));
+
+        var document = AudioUpload() with { MimeType = "application/pdf", FileName = "report.pdf" };
+
+        await CreateSut().DispatchAsync(document);
+
+        await _jobQueue.DidNotReceiveWithAnyArgs()
+            .QueueTranspilationJobAsync(default, default, default, null!, default);
+        await _jobQueue.Received(1).QueueAutoTagAsync(FileId, Arg.Any<AutoTagParameters>(), "application/pdf",
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Any_file_transcode_rule_queues_audio()
+    {
+        GivenRules(Rule(PolicyActionType.Transcode,
+            """{ "audioRungs": [], "videoRungs": [], "generateThumbnail": true }"""));
+
+        var upload = AudioUpload();
+
+        await CreateSut().DispatchAsync(upload);
+
+        await _jobQueue.Received(1).QueueTranspilationJobAsync(upload.VersionId!.Value, FileId, upload.OwnerId,
+            Arg.Any<TranscodeParameters>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Backup_only_policy_queues_nothing()
     {
         GivenRules(Rule(PolicyActionType.Backup, """{ "destinationPath": "/backups/", "frequency": 2 }"""));

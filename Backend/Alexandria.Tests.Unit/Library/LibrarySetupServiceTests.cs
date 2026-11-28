@@ -3,9 +3,10 @@ using Alexandria.Common;
 using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions;
 using Alexandria.Common.Repositories;
-using Alexandria.Data.Models;
+using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Library;
+using Alexandria.Dto.Policies;
 using Alexandria.Services.Storage.Library;
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
@@ -18,38 +19,49 @@ namespace Alexandria.Tests.Unit.Library;
 public class LibrarySetupServiceTests
 {
     private readonly Guid _userId = Guid.NewGuid();
+    private readonly Guid _policyId = Guid.NewGuid();
 
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
     private readonly IDirectoryRepository _directories = Substitute.For<IDirectoryRepository>();
     private readonly IDirectoryPolicyRepository _policies = Substitute.For<IDirectoryPolicyRepository>();
-    private readonly IPolicyRuleRepository _rules = Substitute.For<IPolicyRuleRepository>();
+    private readonly IDirectoryPolicyService _policyService = Substitute.For<IDirectoryPolicyService>();
 
     private readonly List<Directory> _addedDirectories = [];
-    private readonly List<DirectoryPolicy> _addedPolicies = [];
-    private readonly List<PolicyRule> _addedRules = [];
+    private readonly List<CreateDirectoryPolicyRequest> _createdPolicies = [];
+    private readonly List<(Guid PolicyId, CreatePolicyRuleRequest Rule, Guid UpdatedBy)> _addedRules = [];
 
     public LibrarySetupServiceTests()
     {
         _unitOfWork.Users.Returns(_users);
         _unitOfWork.Directories.Returns(_directories);
         _unitOfWork.DirectoryPolicies.Returns(_policies);
-        _unitOfWork.PolicyRules.Returns(_rules);
 
         _users.AdvanceOnboardingAsync(_userId, OnboardingStep.Tour, OnboardingStep.Done, Arg.Any<CancellationToken>())
             .Returns(true);
 
         _directories.AddAsync(Arg.Do<Directory>(_addedDirectories.Add), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<Directory>());
-        _policies.AddAsync(Arg.Do<DirectoryPolicy>(_addedPolicies.Add), Arg.Any<CancellationToken>())
-            .Returns(call => call.Arg<DirectoryPolicy>());
-        _rules.AddAsync(Arg.Do<PolicyRule>(_addedRules.Add), Arg.Any<CancellationToken>())
-            .Returns(call => call.Arg<PolicyRule>());
+
+        _policyService.CreatePolicyAsync(Arg.Do<CreateDirectoryPolicyRequest>(_createdPolicies.Add), _userId,
+                Arg.Any<CancellationToken>())
+            .Returns(call => new DirectoryPolicyDto
+            {
+                Id = _policyId,
+                DirectoryId = call.Arg<CreateDirectoryPolicyRequest>().DirectoryId,
+                InheritedByChildren = call.Arg<CreateDirectoryPolicyRequest>().InheritedByChildren,
+            });
+
+        _policyService
+            .When(s => s.AddRuleAsync(Arg.Any<Guid>(), Arg.Any<CreatePolicyRuleRequest>(), Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>()))
+            .Do(call => _addedRules.Add(
+                (call.ArgAt<Guid>(0), call.ArgAt<CreatePolicyRuleRequest>(1), call.ArgAt<Guid>(2))));
     }
 
     private LibrarySetupService CreateSut()
     {
-        return new LibrarySetupService(_unitOfWork, Substitute.For<ILogger<LibrarySetupService>>(),
+        return new LibrarySetupService(_unitOfWork, _policyService, Substitute.For<ILogger<LibrarySetupService>>(),
             Options.Create(new ProcessingCapabilities
             {
                 AdaptiveStreaming = true,
@@ -109,11 +121,15 @@ public class LibrarySetupServiceTests
             d.ParentId.Should().BeNull();
         });
 
-        var policy = _addedPolicies.Should().ContainSingle().Subject;
+        var policy = _createdPolicies.Should().ContainSingle().Subject;
         policy.DirectoryId.Should().Be(_addedDirectories[0].Id);
         policy.InheritedByChildren.Should().BeTrue();
 
-        _addedRules.Should().HaveCount(2).And.AllSatisfy(r => r.PolicyId.Should().Be(policy.Id));
+        _addedRules.Should().HaveCount(2).And.AllSatisfy(r =>
+        {
+            r.PolicyId.Should().Be(_policyId);
+            r.UpdatedBy.Should().Be(_userId);
+        });
 
         await _unitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
     }
@@ -138,12 +154,12 @@ public class LibrarySetupServiceTests
         await CreateSut().FinishTourAsync(_userId, [Music()], TestContext.Current.CancellationToken);
 
         _addedDirectories.Should().BeEmpty();
-        _addedPolicies.Should().BeEmpty();
+        _createdPolicies.Should().BeEmpty();
         _addedRules.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task FinishTour_existingFolderWithoutPolicy_addsAutomationToIt()
+    public async Task FinishTour_existingFolderWithoutPolicy_addsAutomationThroughThePolicyService()
     {
         var existing = new Directory { Id = Guid.NewGuid(), Name = "Music", OwnerId = _userId };
         GivenExistingRootFolder(existing);
@@ -151,7 +167,11 @@ public class LibrarySetupServiceTests
         await CreateSut().FinishTourAsync(_userId, [Music()], TestContext.Current.CancellationToken);
 
         _addedDirectories.Should().BeEmpty();
-        _addedPolicies.Should().ContainSingle().Which.DirectoryId.Should().Be(existing.Id);
+        _createdPolicies.Should().ContainSingle().Which.DirectoryId.Should().Be(existing.Id);
+
+        // The service is what backfills the folder's existing files, so every rule must go through it
+        _addedRules.Select(r => r.Rule.ActionType).Should()
+            .Equal(PolicyActionType.Transcode, PolicyActionType.AutoTag);
     }
 
     [Fact]
@@ -163,7 +183,7 @@ public class LibrarySetupServiceTests
         var folder = _addedDirectories.Should().ContainSingle().Subject;
         folder.Name.Should().Be("Notes");
         folder.SystemKind.Should().Be(DirectorySystemKind.Notes);
-        _addedPolicies.Should().BeEmpty();
+        _createdPolicies.Should().BeEmpty();
     }
 
     [Fact]

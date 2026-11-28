@@ -66,4 +66,12 @@ public interface ITranspilationJobRepository : IRepository<TranspilationJob>
     /// </summary>
     Task<IReadOnlyList<ResolvableTranscodeRow>> GetResolvableJobsAsync(
         Guid ownerId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Live files sitting directly in one of <paramref name="directoryIds"/>, created before
+    /// <paramref name="predatingCutoff"/> and with a current version, each paired with the
+    /// latest live transcode of that version. No tracking, unbounded.
+    /// </summary>
+    Task<IReadOnlyList<TranscodeBackfillCandidate>> GetTranscodeBackfillCandidatesAsync(
+        IReadOnlyCollection<Guid> directoryIds, DateTime predatingCutoff, CancellationToken ct = default);
 }

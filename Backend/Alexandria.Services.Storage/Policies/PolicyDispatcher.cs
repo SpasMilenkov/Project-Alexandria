@@ -1,5 +1,6 @@
 using Alexandria.Common;
 using Alexandria.Common.Exceptions;
+using Alexandria.Common.Helpers;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
@@ -42,6 +43,12 @@ public sealed partial class PolicyDispatcher(
             if (rule.ActionType == PolicyActionType.Backup)
             {
                 LogBackupRuleSkipped(logger, rule.Id, ev.FileId);
+                continue;
+            }
+
+            if (rule.ActionType == PolicyActionType.Transcode && !TranscodeSupportedFileTypes.IsSupported(ev.MimeType))
+            {
+                LogTranscodeRuleSkipped(logger, rule.Id, ev.FileId, ev.MimeType);
                 continue;
             }
 

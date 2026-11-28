@@ -8,6 +8,7 @@ using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Enrichment;
+using Alexandria.Dto.Files.Streaming;
 using Alexandria.Dto.Policies;
 using Alexandria.Services.Storage.Policies;
 using AwesomeAssertions;
@@ -55,11 +56,16 @@ public class DirectoryPolicyBackfillTriggerTests
             .Do(call => call.Arg<DirectoryPolicy>().UpdatedAt = UpdatedAt);
     }
 
-    private DirectoryPolicyService CreateSut(bool enabled = true, bool audioAnalysis = true)
+    private DirectoryPolicyService CreateSut(bool enabled = true, bool audioAnalysis = true, bool streaming = true)
     {
         return new DirectoryPolicyService(_unitOfWork, Substitute.For<IDirectoryService>(),
             _outbox, Substitute.For<ILogger<DirectoryPolicyService>>(),
-            Options.Create(new ProcessingCapabilities { Autotagging = enabled, AudioAnalysis = audioAnalysis }));
+            Options.Create(new ProcessingCapabilities
+            {
+                Autotagging = enabled,
+                AudioAnalysis = audioAnalysis,
+                AdaptiveStreaming = streaming,
+            }));
     }
 
     private static bool MatchesRequest(byte[] body, DateTime cutoff)
@@ -67,6 +73,18 @@ public class DirectoryPolicyBackfillTriggerTests
         var request = JsonSerializer.Deserialize<EnrichmentBackfillRequest>(body, JsonOptions);
 
         return request == new EnrichmentBackfillRequest(PolicyId, RuleId, new DateTimeOffset(cutoff));
+    }
+
+    private static bool MatchesTranscodeRequest(byte[] body, DateTime cutoff)
+    {
+        var request = JsonSerializer.Deserialize<TranscodeBackfillRequest>(body, JsonOptions);
+
+        return request == new TranscodeBackfillRequest
+        {
+            PolicyId = PolicyId,
+            RuleId = RuleId,
+            Cutoff = new DateTimeOffset(cutoff),
+        };
     }
 
     private static CreatePolicyRuleRequest RuleRequest(PolicyActionType actionType) => new()
@@ -86,6 +104,21 @@ public class DirectoryPolicyBackfillTriggerTests
             Arg.Is<byte[]>(body => MatchesRequest(body, cutoff)),
             Arg.Any<CancellationToken>());
 
+    private Task TranscodeBackfillEnqueued(DateTime cutoff)
+        => _outbox.Received(1).EnqueueAsync(
+            TranscodeBackfill.BackfillRoutingKey,
+            Arg.Is<byte[]>(body => MatchesTranscodeRequest(body, cutoff)),
+            Arg.Any<CancellationToken>());
+
+    // Backup has no job to run yet, so it is the one action without a backfill
+    private Task BackfillEnqueuedFor(PolicyActionType actionType, DateTime cutoff)
+    {
+        if (actionType == PolicyActionType.AutoTag) return BackfillEnqueued(cutoff);
+        if (actionType == PolicyActionType.Transcode) return TranscodeBackfillEnqueued(cutoff);
+
+        return NoBackfillEnqueued();
+    }
+
     [Fact]
     public async Task UpdatePolicyAsync_audio_analysis_disabled_preserves_policy_without_backfill_message()
     {
@@ -94,12 +127,15 @@ public class DirectoryPolicyBackfillTriggerTests
             Id = PolicyId,
             DirectoryId = DirectoryId,
             CreatedAt = CreatedAt,
-            Rules = [new PolicyRule
-            {
-                Id = RuleId,
-                ActionType = PolicyActionType.AutoTag,
-                Parameters = JsonDocument.Parse("{}")
-            }]
+            Rules =
+            [
+                new PolicyRule
+                {
+                    Id = RuleId,
+                    ActionType = PolicyActionType.AutoTag,
+                    Parameters = JsonDocument.Parse("{}")
+                }
+            ]
         });
 
         await CreateSut(audioAnalysis: false).UpdatePolicyAsync(
@@ -118,50 +154,73 @@ public class DirectoryPolicyBackfillTriggerTests
         await NoBackfillEnqueued();
     }
 
+    [Fact]
+    public async Task CreatePolicyAsync_saves_before_committing_so_an_outer_transaction_can_add_rules()
+    {
+        await CreateSut().CreatePolicyAsync(new CreateDirectoryPolicyRequest { DirectoryId = DirectoryId },
+            OwnerId, TestContext.Current.CancellationToken);
+
+        Received.InOrder(() =>
+        {
+            _policies.AddAsync(Arg.Any<DirectoryPolicy>(), Arg.Any<CancellationToken>());
+            _unitOfWork.SaveChangesAsync(Arg.Any<CancellationToken>());
+            _unitOfWork.CommitAsync(Arg.Any<CancellationToken>());
+        });
+    }
+
     [Theory]
     [InlineData(PolicyActionType.AutoTag)]
     [InlineData(PolicyActionType.Transcode)]
-    public async Task UpdatePolicyAsync_inheritance_change_only_backfills_autotag_rules(PolicyActionType actionType)
+    [InlineData(PolicyActionType.Backup)]
+    public async Task UpdatePolicyAsync_inheritance_change_backfills_each_rule_with_a_job(PolicyActionType actionType)
     {
         _policies.GetByIdAsync(PolicyId, Arg.Any<CancellationToken>()).Returns(new DirectoryPolicy
         {
             Id = PolicyId,
             DirectoryId = DirectoryId,
             CreatedAt = CreatedAt,
-            Rules = [new PolicyRule
-            {
-                Id = RuleId,
-                ActionType = actionType,
-                Parameters = JsonDocument.Parse("{}")
-            }]
+            Rules =
+            [
+                new PolicyRule
+                {
+                    Id = RuleId,
+                    ActionType = actionType,
+                    Parameters = JsonDocument.Parse("{}")
+                }
+            ]
         });
 
         await CreateSut().UpdatePolicyAsync(PolicyId, true, OwnerId, TestContext.Current.CancellationToken);
 
-        if (actionType == PolicyActionType.AutoTag)
-            await BackfillEnqueued(UpdatedAt);
-        else
-            await NoBackfillEnqueued();
+        await BackfillEnqueuedFor(actionType, UpdatedAt);
     }
 
     [Theory]
     [InlineData(PolicyActionType.AutoTag)]
     [InlineData(PolicyActionType.Transcode)]
-    public async Task AddRuleAsync_only_autotag_publishes_rule_and_creation_cutoff(PolicyActionType actionType)
+    [InlineData(PolicyActionType.Backup)]
+    public async Task AddRuleAsync_publishes_the_rules_backfill_with_creation_cutoff(PolicyActionType actionType)
     {
         await CreateSut().AddRuleAsync(PolicyId, RuleRequest(actionType), OwnerId,
             TestContext.Current.CancellationToken);
 
-        if (actionType == PolicyActionType.AutoTag)
-            await BackfillEnqueued(CreatedAt);
-        else
-            await NoBackfillEnqueued();
+        await BackfillEnqueuedFor(actionType, CreatedAt);
+    }
+
+    [Fact]
+    public async Task AddRuleAsync_streaming_disabled_does_not_publish_transcode_backfill()
+    {
+        await CreateSut(streaming: false).AddRuleAsync(PolicyId, RuleRequest(PolicyActionType.Transcode), OwnerId,
+            TestContext.Current.CancellationToken);
+
+        await NoBackfillEnqueued();
     }
 
     [Theory]
     [InlineData(PolicyActionType.AutoTag)]
+    [InlineData(PolicyActionType.Transcode)]
     [InlineData(PolicyActionType.Backup)]
-    public async Task UpdateRuleAsync_only_autotag_publishes_rule_and_update_cutoff(PolicyActionType actionType)
+    public async Task UpdateRuleAsync_publishes_the_rules_backfill_with_update_cutoff(PolicyActionType actionType)
     {
         _rules.GetByIdAsync(RuleId, Arg.Any<CancellationToken>()).Returns(new PolicyRule
         {
@@ -178,10 +237,7 @@ public class DirectoryPolicyBackfillTriggerTests
             Parameters = JsonDocument.Parse("{}")
         }, OwnerId, TestContext.Current.CancellationToken);
 
-        if (actionType == PolicyActionType.AutoTag)
-            await BackfillEnqueued(UpdatedAt);
-        else
-            await NoBackfillEnqueued();
+        await BackfillEnqueuedFor(actionType, UpdatedAt);
     }
 
     [Fact]
@@ -191,6 +247,145 @@ public class DirectoryPolicyBackfillTriggerTests
             TestContext.Current.CancellationToken);
 
         await NoBackfillEnqueued();
+    }
+
+    private static readonly Guid ParentPolicyId = Guid.NewGuid();
+    private static readonly Guid ParentRuleId = Guid.NewGuid();
+
+    private void GivenParentFallback()
+    {
+        _policies.ResolveInheritedPolicyAboveAsync(DirectoryId, Arg.Any<CancellationToken>()).Returns(new DirectoryPolicyDto
+        {
+            Id = ParentPolicyId,
+            DirectoryId = Guid.NewGuid(),
+            Rules = [new PolicyRuleDto { Id = ParentRuleId, ActionType = PolicyActionType.Transcode }],
+        });
+    }
+
+    private void GivenRuleToDelete(bool othersRemain)
+    {
+        _rules.GetByIdAsync(RuleId, Arg.Any<CancellationToken>()).Returns(new PolicyRule
+        {
+            Id = RuleId,
+            PolicyId = PolicyId,
+            ActionType = PolicyActionType.Transcode,
+        });
+
+        _rules.ExistsAsync(Arg.Any<Expression<Func<PolicyRule, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(othersRemain);
+
+        _policies.GetByIdAsync(PolicyId, Arg.Any<CancellationToken>())
+            .Returns(new DirectoryPolicy { Id = PolicyId, DirectoryId = DirectoryId });
+    }
+
+    private static bool IsParentTranscodeBackfill(byte[] body)
+    {
+        var request = JsonSerializer.Deserialize<TranscodeBackfillRequest>(body, JsonOptions);
+
+        return request is not null && request.PolicyId == ParentPolicyId && request.RuleId == ParentRuleId;
+    }
+
+    private Task ParentBackfillEnqueued()
+        => _outbox.Received(1).EnqueueAsync(
+            TranscodeBackfill.BackfillRoutingKey,
+            Arg.Is<byte[]>(body => IsParentTranscodeBackfill(body)),
+            Arg.Any<CancellationToken>());
+
+    [Fact]
+    public async Task DeleteRuleAsync_last_rule_backfills_the_parent_policy_the_folder_falls_back_to()
+    {
+        GivenRuleToDelete(othersRemain: false);
+        GivenParentFallback();
+
+        await CreateSut().DeleteRuleAsync(RuleId, OwnerId, TestContext.Current.CancellationToken);
+
+        await ParentBackfillEnqueued();
+        Received.InOrder(() =>
+        {
+            _rules.Remove(Arg.Any<PolicyRule>());
+            _unitOfWork.SaveChangesAsync(Arg.Any<CancellationToken>());
+            _policies.ResolveInheritedPolicyAboveAsync(DirectoryId, Arg.Any<CancellationToken>());
+            _unitOfWork.CommitAsync(Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Fact]
+    public async Task DeleteRuleAsync_other_rules_remain_queues_nothing()
+    {
+        GivenRuleToDelete(othersRemain: true);
+        GivenParentFallback();
+
+        await CreateSut().DeleteRuleAsync(RuleId, OwnerId, TestContext.Current.CancellationToken);
+
+        await NoBackfillEnqueued();
+    }
+
+    [Fact]
+    public async Task DeleteRuleAsync_no_policy_above_queues_nothing()
+    {
+        GivenRuleToDelete(othersRemain: false);
+
+        await CreateSut().DeleteRuleAsync(RuleId, OwnerId, TestContext.Current.CancellationToken);
+
+        await NoBackfillEnqueued();
+    }
+
+    [Fact]
+    public async Task DeletePolicyAsync_backfills_the_parent_policy_in_the_same_transaction()
+    {
+        _policies.GetByIdAsync(PolicyId, Arg.Any<CancellationToken>())
+            .Returns(new DirectoryPolicy { Id = PolicyId, DirectoryId = DirectoryId });
+        GivenParentFallback();
+
+        await CreateSut().DeletePolicyAsync(PolicyId, OwnerId, TestContext.Current.CancellationToken);
+
+        await ParentBackfillEnqueued();
+        Received.InOrder(() =>
+        {
+            _unitOfWork.BeginTransactionAsync(Arg.Any<CancellationToken>());
+            _policies.Remove(Arg.Any<DirectoryPolicy>());
+            _policies.ResolveInheritedPolicyAboveAsync(DirectoryId, Arg.Any<CancellationToken>());
+            _unitOfWork.CommitAsync(Arg.Any<CancellationToken>());
+        });
+    }
+
+    private void GivenPolicyToUpdate(bool inherited)
+    {
+        _policies.GetByIdAsync(PolicyId, Arg.Any<CancellationToken>()).Returns(new DirectoryPolicy
+        {
+            Id = PolicyId,
+            DirectoryId = DirectoryId,
+            InheritedByChildren = inherited,
+            CreatedAt = CreatedAt,
+            Rules = [new PolicyRule { Id = RuleId, ActionType = PolicyActionType.AutoTag }],
+        });
+    }
+
+    [Fact]
+    public async Task UpdatePolicyAsync_stops_sharing_backfills_the_policy_its_subfolders_fall_back_to()
+    {
+        GivenPolicyToUpdate(inherited: true);
+        GivenParentFallback();
+
+        await CreateSut().UpdatePolicyAsync(PolicyId, false, OwnerId, TestContext.Current.CancellationToken);
+
+        await BackfillEnqueued(UpdatedAt);
+        await ParentBackfillEnqueued();
+    }
+
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public async Task UpdatePolicyAsync_without_stopping_sharing_does_not_look_above(bool wasInherited, bool inherited)
+    {
+        GivenPolicyToUpdate(wasInherited);
+        GivenParentFallback();
+
+        await CreateSut().UpdatePolicyAsync(PolicyId, inherited, OwnerId, TestContext.Current.CancellationToken);
+
+        await _policies.DidNotReceive()
+            .ResolveInheritedPolicyAboveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

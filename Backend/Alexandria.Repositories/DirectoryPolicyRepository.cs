@@ -129,7 +129,10 @@ public sealed class DirectoryPolicyRepository(AlexandriaDbContext context)
 
     public async Task<DirectoryPolicyDto?> GetByDirectoryIdAsync(Guid directoryId, CancellationToken ct = default)
     {
+        // Untracked so a rule deleted earlier in the same unit of work isn't fixed up into the
+        // filtered Rules, which would make an emptied policy look like it still has rules.
         var entity = await _policies
+            .AsNoTracking()
             .Where(p => p.DirectoryId == directoryId && p.DeletedAt == null)
             .Include(p => p.Rules.Where(r => r.DeletedAt == null))
             .FirstOrDefaultAsync(ct);
@@ -139,11 +142,19 @@ public sealed class DirectoryPolicyRepository(AlexandriaDbContext context)
 
     public async Task<DirectoryPolicyDto?> ResolveEffectivePolicyAsync(Guid directoryId, CancellationToken ct = default)
     {
+        // A policy whose last rule was deleted would otherwise shadow the parent's rules while
+        // doing nothing itself, so only a policy with live rules takes the folder over.
         var direct = await GetByDirectoryIdAsync(directoryId, ct);
-        if (direct is not null) return direct;
+        if (direct is not null && direct.Rules.Any()) return direct;
 
-        // The starting folder is excluded: its own policy was checked above, and an ancestor
-        // only counts when it shares its rules with nested folders.
+        return await ResolveInheritedPolicyAboveAsync(directoryId, ct);
+    }
+
+    public async Task<DirectoryPolicyDto?> ResolveInheritedPolicyAboveAsync(Guid directoryId,
+        CancellationToken ct = default)
+    {
+        // The starting folder is excluded: an ancestor only counts when it shares its rules with
+        // nested folders.
         var ancestors = await context.Database.SqlQuery<DirectoryAncestorRow>($"""
             WITH RECURSIVE chain AS (
                 SELECT "Id", "ParentId", 0 AS "Depth"
@@ -169,7 +180,9 @@ public sealed class DirectoryPolicyRepository(AlexandriaDbContext context)
         var ancestorIds = ancestors.Select(a => a.Id).ToList();
 
         var inheritable = await _policies
-            .Where(p => ancestorIds.Contains(p.DirectoryId) && p.InheritedByChildren && p.DeletedAt == null)
+            .AsNoTracking()
+            .Where(p => ancestorIds.Contains(p.DirectoryId) && p.InheritedByChildren && p.DeletedAt == null
+                        && p.Rules.Any(r => r.DeletedAt == null))
             .Include(p => p.Rules.Where(r => r.DeletedAt == null))
             .ToListAsync(ct);
 
@@ -189,6 +202,18 @@ public sealed class DirectoryPolicyRepository(AlexandriaDbContext context)
             .MinBy(p => depthById[p.DirectoryId]);
 
         return nearest is null ? null : DirectoryPolicyDto.FromEntity(nearest);
+    }
+
+    public async Task<IReadOnlyList<DirectoryPolicy>> GetWithRulesByDirectoryIdsAsync(
+        IReadOnlyCollection<Guid> directoryIds, CancellationToken ct = default)
+    {
+        if (directoryIds.Count == 0) return [];
+
+        return await _policies
+            .AsNoTracking()
+            .Where(p => directoryIds.Contains(p.DirectoryId) && p.DeletedAt == null)
+            .Include(p => p.Rules.Where(r => r.DeletedAt == null))
+            .ToListAsync(ct);
     }
 
     public async Task<bool> ExistsForDirectoryAsync(Guid directoryId, CancellationToken ct = default)
