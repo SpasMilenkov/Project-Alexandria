@@ -204,6 +204,18 @@ public sealed class DirectoryPolicyRepository(AlexandriaDbContext context)
         return nearest is null ? null : DirectoryPolicyDto.FromEntity(nearest);
     }
 
+    public async Task<IReadOnlyList<DirectoryPolicy>> GetWithRulesByDirectoryIdsAsync(
+        IReadOnlyCollection<Guid> directoryIds, CancellationToken ct = default)
+    {
+        if (directoryIds.Count == 0) return [];
+
+        return await _policies
+            .AsNoTracking()
+            .Where(p => directoryIds.Contains(p.DirectoryId) && p.DeletedAt == null)
+            .Include(p => p.Rules.Where(r => r.DeletedAt == null))
+            .ToListAsync(ct);
+    }
+
     public async Task<bool> ExistsForDirectoryAsync(Guid directoryId, CancellationToken ct = default)
     {
         return await _policies

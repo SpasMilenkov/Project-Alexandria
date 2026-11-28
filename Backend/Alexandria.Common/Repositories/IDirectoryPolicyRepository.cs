@@ -33,6 +33,12 @@ public interface IDirectoryPolicyRepository : IRepository<DirectoryPolicy>
     /// </summary>
     Task<DirectoryPolicyDto?> ResolveInheritedPolicyAboveAsync(Guid directoryId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Live policies of the given directories with their live rules loaded. No tracking, unbounded.
+    /// </summary>
+    Task<IReadOnlyList<DirectoryPolicy>> GetWithRulesByDirectoryIdsAsync(
+        IReadOnlyCollection<Guid> directoryIds, CancellationToken ct = default);
+
     /// <summary>Returns whether a policy exists for the given directory.</summary>
     Task<bool> ExistsForDirectoryAsync(Guid directoryId, CancellationToken ct = default);
 }

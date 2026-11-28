@@ -43,13 +43,7 @@ public sealed partial class EnrichmentBackfillService(
             return new EnrichmentBackfillResult(0, 0, 0);
         }
 
-        var directoryIds = new List<Guid> { policy.DirectoryId };
-        if (policy.InheritedByChildren)
-        {
-            var subdirectories =
-                await unitOfWork.Directories.GetAllSubDirectoriesAsync(policy.DirectoryId, ct);
-            directoryIds.AddRange(subdirectories.Select(d => d.Id));
-        }
+        var directoryIds = await PolicyScope.ResolveGovernedDirectoryIdsAsync(unitOfWork, policy, ct);
 
         var candidates = await unitOfWork.EssentiaBatchFiles
             .GetEnrichmentBackfillCandidatesAsync(directoryIds, request.Cutoff.UtcDateTime, ct);
