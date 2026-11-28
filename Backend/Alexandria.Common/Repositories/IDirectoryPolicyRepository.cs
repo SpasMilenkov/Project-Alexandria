@@ -20,10 +20,18 @@ public interface IDirectoryPolicyRepository : IRepository<DirectoryPolicy>
 
     /// <summary>
     /// Resolves the effective policy for a directory, checking the directory first
-    /// then walking up to the nearest ancestor with an inheritable policy.
+    /// then walking up to the nearest ancestor with an inheritable policy. A policy without
+    /// live rules is passed over, so an emptied folder falls back to its parent's rules.
     /// Returns null if no applicable policy is found.
     /// </summary>
     Task<DirectoryPolicyDto?> ResolveEffectivePolicyAsync(Guid directoryId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The nearest ancestor policy that is inherited and has live rules, ignoring the directory's
+    /// own policy. It is what the directory, or its subfolders, fall back to when the directory's
+    /// own policy stops applying. Returns null if there is none.
+    /// </summary>
+    Task<DirectoryPolicyDto?> ResolveInheritedPolicyAboveAsync(Guid directoryId, CancellationToken ct = default);
 
     /// <summary>Returns whether a policy exists for the given directory.</summary>
     Task<bool> ExistsForDirectoryAsync(Guid directoryId, CancellationToken ct = default);
